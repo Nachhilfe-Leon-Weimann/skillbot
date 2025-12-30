@@ -11,8 +11,6 @@
     "python.terminal.activateEnvironment": true,
 
     // Linting & Formatting (Ruff)
-    "python.linting.enabled": true,
-    "python.linting.ruffEnabled": true,
     "editor.formatOnSave": true,
     "[python]": {
       "editor.defaultFormatter": "charliermarsh.ruff"
