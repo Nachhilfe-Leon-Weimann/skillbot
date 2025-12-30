@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 def run():
     load_dotenv()
-    TOKEN = os.getenv("DEV_DISCORD_TOKEN")
+    TOKEN = os.getenv("DISCORD_TOKEN")
     if TOKEN is None:
         raise ValueError("No DISCORD_TOKEN")
 
