@@ -1,7 +1,48 @@
 [project]
 name = "skillbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Discord bot for tutoring management and automation."
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.13"
+dependencies = [
+    "discord-py>=2.6.4",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "structlog>=25.5.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=9.0.2", "ruff>=0.14.10"]
+
+# Ruff configuration:
+# - VS Code should pick this up automatically via the Ruff extension.
+# - If VS Code behaves oddly after changes (rare but possible), reload the window
+#   and ensure the workspace root is the repository root.
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+exclude = ["venv/", "build/", "dist/", "__pycache__/"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes (real bugs like unused variables)
+    "W",  # pycodestyle warnings
+    "B",  # flake8-bugbear (common footguns)
+    "I",  # import sorting (isort)
+    "UP", # pyupgrade (modernize syntax for the target Python version)
+]
+
+ignore = [
+    # "E501", # line length
+]
+
+fixable = ["ALL"]
+
+unfixable = [
+    "F401", # unused imports
+]
+
+[tool.ruff.format]
+preview = true
