@@ -1,0 +1,35 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+
+  "settings": {
+    // Python / uv
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+
+    // Linting & Formatting (Ruff)
+    "python.linting.enabled": true,
+    "python.linting.ruffEnabled": true,
+    "editor.formatOnSave": true,
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+
+    // Testing
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+
+    // General sanity
+    "files.exclude": {
+      "**/.venv": true,
+      "**/__pycache__": true,
+      "**/.ruff_cache": true,
+      "**/.pytest_cache": true,
+      "**/.vscode": true,
+      "**/.idea": true
+    }
+  }
+}
