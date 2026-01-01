@@ -14,12 +14,16 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest>=9.0.2", "ruff>=0.14.10"]
 
+[build-system]
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"
+
 # Ruff configuration:
 # - VS Code should pick this up automatically via the Ruff extension.
 # - If VS Code behaves oddly after changes (rare but possible), reload the window
 #   and ensure the workspace root is the repository root.
 [tool.ruff]
-target-version = "py314"
+target-version = "py313"
 line-length = 120
 
 exclude = ["venv/", "build/", "dist/", "__pycache__/"]
