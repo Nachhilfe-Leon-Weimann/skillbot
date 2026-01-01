@@ -104,17 +104,36 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_CI_WEBHOOK }}
         shell: bash
         run: |
-          payload="$(cat <<'JSON'
+          set -euo pipefail
+
+          TOOL="${GITHUB_REPOSITORY##*/}"
+          MODE="${{ steps.meta.outputs.mode }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [[ "$MODE" == "prod" ]]; then
+            VERSION="${{ github.ref_name }}"
+            TITLE="🚀 Deploy succeeded (PROD)"
+            COLOR=5763719
+            EXTRA_FIELD=", {\"name\":\"Version\",\"value\":\"\`${VERSION}\`\",\"inline\":true}"
+          else
+            TITLE="✅ Deploy succeeded (DEV)"
+            COLOR=3447003
+            EXTRA_FIELD=""
+          fi
+
+          payload="$(cat <<JSON
           {
             "embeds": [{
-              "title": "✅ Build & Deploy succeeded",
-              "color": 3066993,
+              "title": "${TITLE}",
+              "footer": { "text": "Build & Deploy Pipeline" },
+              "url": "${RUN_URL}",
+              "color": ${COLOR},
               "fields": [
-                {"name": "Repo", "value": "${{ github.repository }}", "inline": true},
-                {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
-                {"name": "Mode", "value": "${{ steps.meta.outputs.mode }}", "inline": true}
+                { "name": "Tool", "value": "\`${TOOL}\`", "inline": true },
+                { "name": "Mode", "value": "\`${MODE}\`", "inline": true }
+                ${EXTRA_FIELD}
               ],
-              "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "footer": { "text": "Build & Deploy Pipeline" }
             }]
           }
           JSON
@@ -134,6 +153,7 @@ jobs:
           {
             "embeds": [{
               "title": "❌ Build & Deploy FAILED",
+              "footer": { "text": "Build & Deploy Pipeline" },
               "color": 15158332,
               "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }]
