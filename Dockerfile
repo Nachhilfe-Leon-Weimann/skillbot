@@ -16,7 +16,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Copy source code
-COPY skillbot ./skillbot
+COPY src ./src
 
 # --- runtime: minimal image, no uv needed ---
 FROM python:${PYTHON_VERSION} AS runtime
@@ -24,11 +24,13 @@ WORKDIR /app
 
 # Copy the virtual environment and app code
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/skillbot /app/skillbot
+COPY --from=builder /app/src /app/src
 
 # Use the venv by default
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
+
+ENV PYTHONPATH="/app/src"
 
 # Start bot
 CMD ["python", "-m", "skillbot"]
