@@ -10,7 +10,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy only dependency metadata first (better layer caching)
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 
 # Copy source code
 COPY src ./src
