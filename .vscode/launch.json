@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run SkillBot",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "skillbot",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    }
+  ]
+}
