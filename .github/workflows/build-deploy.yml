@@ -1,0 +1,165 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Guardrail: PROD tags must be on main
+      - name: Guardrail (tag must be on main)
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags
+          if git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+            echo "✅ Tag is on main"
+          else
+            echo "❌ Tag not on main – aborting"
+            exit 1
+          fi
+
+      # Docker build setup
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Compute image tags
+      - name: Compute image tags
+        id: meta
+        shell: bash
+        run: |
+          IMAGE="$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAGS=(
+              "${IMAGE}:prod"
+              "${IMAGE}:${VERSION}"
+              "${IMAGE}:sha-${GITHUB_SHA::7}"
+            )
+            MODE="prod"
+          else
+            TAGS=(
+              "${IMAGE}:dev"
+              "${IMAGE}:sha-${GITHUB_SHA::7}"
+            )
+            MODE="dev"
+          fi
+
+          printf "tags=%s\n" "$(IFS=,; echo "${TAGS[*]}")" >> "$GITHUB_OUTPUT"
+          echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+
+      # Build & Push
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+
+      # Deploy via Dokploy
+      - name: Deploy DEV (Dokploy)
+        if: steps.meta.outputs.mode == 'dev'
+        run: |
+          curl -fsS --retry 5 --retry-delay 2 --retry-all-errors \
+            -X POST "${{ secrets.DOKPLOY_WEBHOOK_DEV }}"
+
+      - name: Deploy PROD (Dokploy)
+        if: steps.meta.outputs.mode == 'prod'
+        run: |
+          curl -fsS --retry 5 --retry-delay 2 --retry-all-errors \
+            -X POST "${{ secrets.DOKPLOY_WEBHOOK_PROD }}"
+
+      # Discord notification (SUCCESS)
+      - name: Notify Discord (success)
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_CI_WEBHOOK }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TOOL="${GITHUB_REPOSITORY##*/}"
+          MODE="${{ steps.meta.outputs.mode }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [[ "$MODE" == "prod" ]]; then
+            VERSION="${{ github.ref_name }}"
+            TITLE="🚀 Deploy succeeded (PROD)"
+            COLOR=5763719
+            EXTRA_FIELD=", {\"name\":\"Version\",\"value\":\"\`${VERSION}\`\",\"inline\":true}"
+          else
+            TITLE="✅ Deploy succeeded (DEV)"
+            COLOR=3447003
+            EXTRA_FIELD=""
+          fi
+
+          payload="$(cat <<JSON
+          {
+            "embeds": [{
+              "title": "${TITLE}",
+              "footer": { "text": "Build & Deploy Pipeline" },
+              "url": "${RUN_URL}",
+              "color": ${COLOR},
+              "fields": [
+                { "name": "Tool", "value": "\`${TOOL}\`", "inline": true },
+                { "name": "Mode", "value": "\`${MODE}\`", "inline": true }
+                ${EXTRA_FIELD}
+              ],
+              "footer": { "text": "Build & Deploy Pipeline" }
+            }]
+          }
+          JSON
+          )"
+
+          curl -fsS -H "Content-Type: application/json" \
+            -d "$payload" "$DISCORD_WEBHOOK"
+
+      # Discord notification (FAIL)
+      - name: Notify Discord (failure)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_CI_WEBHOOK }}
+        shell: bash
+        run: |
+          payload="$(cat <<'JSON'
+          {
+            "embeds": [{
+              "title": "❌ Build & Deploy FAILED",
+              "footer": { "text": "Build & Deploy Pipeline" },
+              "color": 15158332,
+              "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }]
+          }
+          JSON
+          )"
+
+          curl -fsS -H "Content-Type: application/json" \
+            -d "$payload" "$DISCORD_WEBHOOK"

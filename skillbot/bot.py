@@ -18,4 +18,7 @@ def run():
     async def on_ready():
         print(f"Logged in as {bot.user}")
 
-    asyncio.run(bot.start(TOKEN))
+    try:
+        asyncio.run(bot.start(TOKEN))
+    except KeyboardInterrupt:
+        print("Cancelled bot execution")
