@@ -24,7 +24,7 @@ jobs:
 
       # Guardrail: only allow PROD builds for tags that point to a commit contained in origin/main
       - name: Guardrail (tag must be on main)
-        if: github.ref_type == 'tag'
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           set -euo pipefail
@@ -55,20 +55,26 @@ jobs:
         id: meta
         shell: bash
         run: |
+          set -euo pipefail
+
           IMAGE="$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')"
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"  # v1.2.3 -> 1.2.3
-            echo "tags<<EOF" >> $GITHUB_OUTPUT
-            echo "${IMAGE}:prod" >> $GITHUB_OUTPUT
-            echo "${IMAGE}:${VERSION}" >> $GITHUB_OUTPUT
-            echo "${IMAGE}:sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            {
+              echo "tags<<EOF"
+              echo "${IMAGE}:prod"
+              echo "${IMAGE}:${VERSION}"
+              echo "${IMAGE}:sha-${GITHUB_SHA::7}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "tags<<EOF" >> $GITHUB_OUTPUT
-            echo "${IMAGE}:dev" >> $GITHUB_OUTPUT
-            echo "${IMAGE}:sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            {
+              echo "tags<<EOF"
+              echo "${IMAGE}:dev"
+              echo "${IMAGE}:sha-${GITHUB_SHA::7}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build & Push
@@ -79,3 +85,19 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy dev (Dokploy)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 5 --retry-delay 2 --retry-all-errors -X POST "${{ secrets.DOKPLOY_WEBHOOK_DEV }}"
+
+      - name: Deploy prod (Dokploy)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 5 --retry-delay 2 --retry-all-errors -X POST "${{ secrets.DOKPLOY_WEBHOOK_PROD }}"
