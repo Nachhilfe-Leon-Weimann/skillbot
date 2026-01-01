@@ -10,13 +10,13 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy only dependency metadata first (better layer caching)
-COPY pyproject.toml uv.lock ./
-
-# Create venv at /app/.venv and install prod deps
-RUN uv sync --frozen --no-dev
+COPY pyproject.toml uv.lock README.md ./
 
 # Copy source code
 COPY src ./src
+
+# Create venv at /app/.venv and install prod deps
+RUN uv sync --frozen --no-dev
 
 # --- runtime: minimal image, no uv needed ---
 FROM python:${PYTHON_VERSION} AS runtime
