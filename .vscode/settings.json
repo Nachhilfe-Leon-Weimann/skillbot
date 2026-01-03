@@ -2,6 +2,7 @@
   // Python / uv
   "python.defaultInterpreterPath": ".venv/bin/python",
   "python.terminal.activateEnvironment": true,
+  "python.analysis.extraPaths": ["../skillcore"],
 
   // General sanity
   "files.exclude": {
