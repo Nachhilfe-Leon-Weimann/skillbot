@@ -20,6 +20,9 @@ COPY pyproject.toml uv.lock README.md ./
 # Copy source code
 COPY src ./src
 
+RUN --mount=type=secret,id=github_token \
+    git config --global url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf "https://github.com/"
+
 # Create venv at /app/.venv and install prod deps
 RUN uv sync --frozen --no-dev
 
