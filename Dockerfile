@@ -6,25 +6,37 @@ ARG PYTHON_VERSION=3.13-slim
 FROM python:${PYTHON_VERSION} AS builder
 WORKDIR /app
 
-# Install git (to fetch dependencies)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install uv (build-time only)
 RUN pip install --no-cache-dir uv
 
 # Copy only dependency metadata first (better layer caching)
 COPY pyproject.toml uv.lock README.md ./
 
+# Copy vendored private deps (comes from GH Actions checkout)
+COPY vendor/skillcore ./vendor/skillcore
+
 # Copy source code
 COPY src ./src
 
-RUN --mount=type=secret,id=github_token \
-    git config --global url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf "https://github.com/"
+# Fix pyproject.toml to use local skillcore path
+RUN python - <<'PY'
+from pathlib import Path
+
+p = Path("pyproject.toml")
+txt = p.read_text(encoding="utf-8")
+
+old = 'skillcore @ git+https://github.com/Nachhilfe-Leon-Weimann/skillcore.git@main'
+new = 'skillcore @ file:///app/vendor/skillcore'
+
+if old in txt:
+    p.write_text(txt.replace(old, new), encoding="utf-8")
+    print("Patched skillcore dependency to local path.")
+else:
+    print("No patch applied (pattern not found).")
+PY
 
 # Create venv at /app/.venv and install prod deps
-RUN uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 # --- runtime: minimal image, no uv needed ---
 FROM python:${PYTHON_VERSION} AS runtime
