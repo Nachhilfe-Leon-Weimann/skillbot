@@ -23,6 +23,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout skillcore (private)
+        uses: actions/checkout@v4
+        with:
+          repository: Nachhilfe-Leon-Weimann/skillcore
+          path: vendor/skillcore
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 1
+
       # Guardrail: PROD tags must be on main
       - name: Guardrail (tag must be on main)
         if: github.ref_type == 'tag'
