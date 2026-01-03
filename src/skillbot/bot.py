@@ -1,24 +1,45 @@
-import asyncio
-import os
-
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
+
+from .config import Settings
 
 
-def run():
-    load_dotenv()
-    TOKEN = os.getenv("DISCORD_TOKEN")
-    if TOKEN is None:
-        raise ValueError("No DISCORD_TOKEN")
+class SkillBot(commands.Bot):
+    def __init__(self, settings: Settings):
+        intents = discord.Intents.all()
+        super().__init__(command_prefix="!", intents=intents)
 
-    bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+        self.settings = settings
 
-    @bot.event
-    async def on_ready():
-        print(f"Logged in as {bot.user}")
+    async def setup_hook(self) -> None:
+        await self._load_extensions()
+        await self._sync_app_commands()
 
-    try:
-        asyncio.run(bot.start(TOKEN))
-    except KeyboardInterrupt:
-        print("Cancelled bot execution")
+    async def on_ready(self) -> None:
+        print(f"Logged in as {self.user}")
+
+    async def _load_extensions(self) -> None:
+        extensions = [
+            # "skillbot.extensions.admin",
+        ]
+
+        for ext in extensions:
+            await self.load_extension(ext)
+
+    async def _sync_app_commands(self) -> None:
+        if not self.settings.discord.sync_commands:
+            return
+        print("[Sync] Start command sync")
+
+        try:
+            if self.settings.discord.guild_id:
+                print(f"Sync only for guild {self.settings.discord.guild_id}")
+                guild = discord.Object(id=self.settings.discord.guild_id)
+                self.tree.copy_global_to(guild=guild)
+                synced = await self.tree.sync(guild=guild)
+                print(f"[Sync] Synced {len(synced)} commands to guild {self.settings.discord.guild_id}")
+            else:
+                synced = await self.tree.sync()
+                print(f"[Sync] Synced {len(synced)} global commands")
+        except Exception as e:
+            print(f"[Sync] Failed: {e}")

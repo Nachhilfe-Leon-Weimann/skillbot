@@ -5,10 +5,10 @@ description = "A Discord bot for tutoring management and automation."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "skillcore @ git+https://github.com/Nachhilfe-Leon-Weimann/skillcore.git@main",
     "discord-py>=2.6.4",
     "pydantic>=2.12.5",
-    "python-dotenv>=1.2.1",
-    "structlog>=25.5.0",
+    "pydantic-settings>=2.12.0",
 ]
 
 [dependency-groups]
