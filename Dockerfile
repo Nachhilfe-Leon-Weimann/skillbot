@@ -6,6 +6,11 @@ ARG PYTHON_VERSION=3.13-slim
 FROM python:${PYTHON_VERSION} AS builder
 WORKDIR /app
 
+# Install git (to fetch dependencies)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install uv (build-time only)
 RUN pip install --no-cache-dir uv
 
@@ -29,7 +34,6 @@ COPY --from=builder /app/src /app/src
 # Use the venv by default
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
-
 ENV PYTHONPATH="/app/src"
 
 # Start bot
