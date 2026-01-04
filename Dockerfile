@@ -10,12 +10,10 @@ RUN pip install --no-cache-dir uv
 
 # Copy dependency metadata first (better layer caching)
 COPY pyproject.toml README.md ./
+COPY uv.lock.prod uv.lock
 
 # Vendored private deps (checked out in CI)
 COPY vendor/skillcore ./vendor/skillcore
-
-# Create production lockfile
-RUN uv lock --no-sources
 
 # App source
 COPY src ./src

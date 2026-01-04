@@ -5,7 +5,7 @@ description = "A Discord bot for tutoring management and automation."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "skillcore @ file:///app/vendor/skillcore",
+    "skillcore @ file:///${PROJECT_ROOT}/vendor/skillcore",
     "discord-py>=2.6.4",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
@@ -22,10 +22,6 @@ build-backend = "uv_build"
 [tool.uv.sources]
 skillcore = { path = "../skillcore", editable = true }
 
-# Ruff configuration:
-# - VS Code should pick this up automatically via the Ruff extension.
-# - If VS Code behaves oddly after changes (rare but possible), reload the window
-#   and ensure the workspace root is the repository root.
 [tool.ruff]
 target-version = "py313"
 line-length = 120
