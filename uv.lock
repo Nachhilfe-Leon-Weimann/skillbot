@@ -673,7 +673,7 @@ requires-dist = [
     { name = "discord-py", specifier = ">=2.6.4" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "skillcore", git = "https://github.com/Nachhilfe-Leon-Weimann/skillcore.git?rev=main" },
+    { name = "skillcore", editable = "../skillcore" },
 ]
 
 [package.metadata.requires-dev]
@@ -685,13 +685,29 @@ dev = [
 [[package]]
 name = "skillcore"
 version = "0.1.0"
-source = { git = "https://github.com/Nachhilfe-Leon-Weimann/skillcore.git?rev=main#00e92af6f994821be38acc6b6f2450846faabbe4" }
+source = { editable = "../skillcore" }
 dependencies = [
     { name = "asyncpg" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "sqlalchemy" },
     { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.45" },
+    { name = "structlog", specifier = ">=25.5.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pyright", specifier = ">=1.1.407" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "ruff", specifier = ">=0.14.10" },
 ]
 
 [[package]]

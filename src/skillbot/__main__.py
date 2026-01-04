@@ -1,12 +1,20 @@
 import asyncio
 
 import discord
+from skillcore.logging import configure_logging
 
-from skillbot.bot import SkillBot
-from skillbot.config import get_settings
+from skillbot.core.bot import SkillBot
+from skillbot.core.config import get_settings
+
+
+def _prepare_logging() -> None:
+    settings = get_settings()
+    configure_logging(level=settings.logging.level_int())
 
 
 async def main() -> None:
+    _prepare_logging()
+
     settings = get_settings()
     bot = SkillBot(settings)
 

@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from skillcore.config import DatabaseSettings
+from skillcore.config import DatabaseSettings, LoggingSettings
 
 
 class DiscordSettings(BaseSettings):
@@ -11,13 +11,13 @@ class DiscordSettings(BaseSettings):
 
     Expected keys:
         - DISCORD__TOKEN=...
-        - DISCORD__GUILD_ID=...
 
     Optional keys:
+        - DISCORD__GUILD_ID=...
         - DISCORD__SYNC_COMMANDS=...
     """
 
-    token: str = ""
+    token: str
     guild_id: int | None = None
     sync_commands: bool = False
 
@@ -38,11 +38,13 @@ class Settings(BaseModel):
 
     discord: DiscordSettings
     database: DatabaseSettings
+    logging: LoggingSettings
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        discord=DiscordSettings(),
-        database=DatabaseSettings(),
+        discord=DiscordSettings(),  # pyright: ignore[reportCallIssue]
+        database=DatabaseSettings(),  # pyright: ignore[reportCallIssue]
+        logging=LoggingSettings(),
     )

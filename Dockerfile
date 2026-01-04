@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1
-
 ARG PYTHON_VERSION=3.13-slim
 
 # --- builder: installs deps deterministically via uv.lock ---
@@ -9,34 +8,20 @@ WORKDIR /app
 # Install uv (build-time only)
 RUN pip install --no-cache-dir uv
 
-# Copy only dependency metadata first (better layer caching)
-COPY pyproject.toml uv.lock README.md ./
+# Copy dependency metadata first (better layer caching)
+COPY pyproject.toml README.md ./
 
-# Copy vendored private deps (comes from GH Actions checkout)
+# Vendored private deps (checked out in CI)
 COPY vendor/skillcore ./vendor/skillcore
 
-# Copy source code
+# Create production lockfile
+RUN uv lock --no-sources
+
+# App source
 COPY src ./src
 
-# Fix pyproject.toml to use local skillcore path
-RUN python - <<'PY'
-from pathlib import Path
-
-p = Path("pyproject.toml")
-txt = p.read_text(encoding="utf-8")
-
-old = 'skillcore @ git+https://github.com/Nachhilfe-Leon-Weimann/skillcore.git@main'
-new = 'skillcore @ file:///app/vendor/skillcore'
-
-if old in txt:
-    p.write_text(txt.replace(old, new), encoding="utf-8")
-    print("Patched skillcore dependency to local path.")
-else:
-    print("No patch applied (pattern not found).")
-PY
-
-# Create venv at /app/.venv and install prod deps
-RUN uv sync --no-dev
+# Create venv at /app/.venv and install prod deps strictly from uv.lock
+RUN uv sync --no-dev --frozen
 
 # --- runtime: minimal image, no uv needed ---
 FROM python:${PYTHON_VERSION} AS runtime
