@@ -21,6 +21,7 @@ class SkillBot(commands.Bot):
     async def _load_extensions(self) -> None:
         extensions = [
             # "skillbot.extensions.admin",
+            "skillbot.cogs.teachers"
         ]
 
         for ext in extensions:
