@@ -1,4 +1,6 @@
+import importlib
 import logging
+import pkgutil
 
 import discord
 from discord.ext import commands
@@ -23,16 +25,40 @@ class SkillBot(commands.Bot):
         log.info(f"Logged in as {self.user}")
 
     async def _load_extensions(self) -> None:
-        extensions = [
-            "skillbot.cogs.teachers",
-        ]
+        """
+        Auto-discover subpackages in _skillbot.cogs.*_ and load each package as extension.
 
-        for ext in extensions:
+        Convention:
+        - Each subpackage: _skillbot/cogs/pkg/__init__.py_ provides (async) 'setup(bot)'
+        - Skips private packages starting with "_"
+        """
+
+        base = "skillbot.cogs"
+        cogs_pkg = importlib.import_module(base)
+
+        for m in pkgutil.iter_modules(cogs_pkg.__path__):
+            if not m.ispkg:
+                continue
+
+            name = m.name
+            if name.startswith("_"):
+                continue
+
+            ext = f"{base}.{name}"
             await self.load_extension(ext)
 
     async def _sync_app_commands(self) -> None:
+        """
+        Synchronize Discord app commands (slash commands).
+
+        Behavior:
+        - If syncing is disabled via settings, this method is a no-op.
+        - If a guild ID is configured, commands are synced *only* to that guild.
+          Otherwise, commands are synced globally.
+        """
+
         if not self.settings.discord.sync_commands:
-            log.debug("Skip syncing app commands")
+            log.info("Skip syncing app commands")
             return
 
         try:
