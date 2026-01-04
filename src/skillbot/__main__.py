@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import discord
 from skillcore.logging import configure_logging
@@ -10,6 +11,8 @@ from skillbot.core.config import get_settings
 def _prepare_logging() -> None:
     settings = get_settings()
     configure_logging(level=settings.logging.level_int())
+
+    logging.getLogger("discord").setLevel(logging.WARNING)
 
 
 async def main() -> None:
