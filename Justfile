@@ -104,3 +104,7 @@ start:
   echo ""
 
   uv run -m skillbot
+
+# Start bot in development mode with command sync enabled.
+start-synced:
+  DISCORD__SYNC_COMMANDS=true just start
