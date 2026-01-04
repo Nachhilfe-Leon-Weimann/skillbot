@@ -3,8 +3,10 @@ import logging
 import pkgutil
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
+from .app_command_logger import AppCommandLogger, AppCommandLogPolicy
 from .config import Settings
 
 log = logging.getLogger(__name__)
@@ -17,12 +19,25 @@ class SkillBot(commands.Bot):
 
         self.settings = settings
 
+        self.app_cmd_logger = AppCommandLogger(
+            policy=AppCommandLogPolicy(
+                audit_commands=set(),
+                audit_prefixes=("teachers", "students"),
+            )
+        )
+
     async def setup_hook(self) -> None:
         await self._load_extensions()
         await self._sync_app_commands()
 
     async def on_ready(self) -> None:
-        log.info(f"Logged in as {self.user}")
+        log.info("Logged in as %s", self.user)
+
+    async def on_app_command_completion(self, interaction: discord.Interaction, command) -> None:
+        await self.app_cmd_logger.log_success(interaction, command)
+
+    async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError) -> None:
+        await self.app_cmd_logger.log_error(interaction, getattr(interaction, "command", None), error)
 
     async def _load_extensions(self) -> None:
         """
