@@ -1,7 +1,11 @@
+import logging
+
 import discord
 from discord.ext import commands
 
 from .config import Settings
+
+log = logging.getLogger(__name__)
 
 
 class SkillBot(commands.Bot):
@@ -16,12 +20,11 @@ class SkillBot(commands.Bot):
         await self._sync_app_commands()
 
     async def on_ready(self) -> None:
-        print(f"Logged in as {self.user}")
+        log.info(f"Logged in as {self.user}")
 
     async def _load_extensions(self) -> None:
         extensions = [
-            # "skillbot.extensions.admin",
-            "skillbot.cogs.teachers"
+            "skillbot.cogs.teachers",
         ]
 
         for ext in extensions:
@@ -29,18 +32,21 @@ class SkillBot(commands.Bot):
 
     async def _sync_app_commands(self) -> None:
         if not self.settings.discord.sync_commands:
+            log.debug("Skip syncing app commands")
             return
-        print("[Sync] Start command sync")
 
         try:
             if self.settings.discord.guild_id:
-                print(f"Sync only for guild {self.settings.discord.guild_id}")
+                log.debug("Sync only for guild %d", self.settings.discord.guild_id)
                 guild = discord.Object(id=self.settings.discord.guild_id)
                 self.tree.copy_global_to(guild=guild)
                 synced = await self.tree.sync(guild=guild)
-                print(f"[Sync] Synced {len(synced)} commands to guild {self.settings.discord.guild_id}")
+                log.debug(
+                    "Synced commands to guild",
+                    extra={"guild_id": self.settings.discord.guild_id, "count": len(synced)},
+                )
             else:
                 synced = await self.tree.sync()
-                print(f"[Sync] Synced {len(synced)} global commands")
-        except Exception as e:
-            print(f"[Sync] Failed: {e}")
+                log.debug("Synced %d global commands", len(synced))
+        except Exception:
+            log.exception("Syncing app commands failed (continuing without sync)")
