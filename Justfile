@@ -2,13 +2,18 @@ set shell := ["bash", "-cu"]
 set quiet := true
 
 
+# --- Aliases ---
+
+s: start
+
+
 # --- Config ---
 
 BUILD_IMAGE := "skillbot"
 BUILD_TAG   := "local"
 
 _default:
-    just -l
+  just -l
 
 
 # --- Distributing ---
@@ -87,3 +92,15 @@ _lock-core: vendor
 
   echo ""
   echo "Done."
+
+
+# --- Development Helpers ---
+
+# Start bot in development mode.
+start:
+  set -euo pipefail
+
+  echo "Starting bot in development mode ..."
+  echo ""
+
+  uv run -m skillbot
