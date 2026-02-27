@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from skillcore.config import DatabaseSettings, LoggingSettings
 
@@ -17,7 +17,7 @@ class DiscordSettings(BaseSettings):
         - DISCORD__SYNC_COMMANDS=...
     """
 
-    token: str
+    token: SecretStr
     guild_id: int | None = None
     sync_commands: bool = False
 

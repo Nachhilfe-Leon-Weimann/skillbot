@@ -23,7 +23,7 @@ async def main() -> None:
 
     async with bot:
         try:
-            await bot.start(settings.discord.token)
+            await bot.start(settings.discord.token.get_secret_value())
         except discord.LoginFailure:
             print("Invalid token (DISCORD_TOKEN)")
         except discord.HTTPException as e:
