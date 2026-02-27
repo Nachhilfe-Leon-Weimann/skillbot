@@ -47,9 +47,30 @@ class AppCommandLogger:
             "guild_id": guild.id if guild else None,
         }
 
+    def _permission_fields(self, interaction: discord.Interaction, error: Exception | None) -> dict:
+        decision = None
+
+        if error is not None:
+            decision = getattr(error, "decision", None)
+            if decision is None and getattr(error, "original", None) is not None:
+                decision = getattr(error.original, "decision", None)
+
+        if decision is None:
+            decision = getattr(interaction, "extras", {}).get("permission_decision")
+
+        if decision is None:
+            return {}
+
+        return {
+            "permission_action": getattr(decision, "action", None),
+            "permission_allowed": getattr(decision, "allowed", None),
+            "permission_source": getattr(decision, "source", None),
+            "permission_reason": getattr(decision, "reason", None),
+        }
+
     async def log_success(self, interaction: discord.Interaction, command) -> None:
         name = self._qualified_name(command)
-        fields = self._base_fields(interaction, name)
+        fields = self._base_fields(interaction, name) | self._permission_fields(interaction, None)
 
         if self._policy.is_debug_only(name):
             log.debug("App command ok", extra=fields)
@@ -61,7 +82,7 @@ class AppCommandLogger:
         fields = self._base_fields(interaction, name) | {
             "error_type": type(error).__name__,
             "error": str(error),
-        }
+        } | self._permission_fields(interaction, error)
 
         is_perm = isinstance(
             error,

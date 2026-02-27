@@ -2,6 +2,7 @@ from skillcore.db import Database
 from sqlalchemy import text
 
 from skillbot.db.models import Base
+from skillbot.db.seed_permissions import seed_default_permission_grants
 
 
 async def setup_database(db: Database) -> None:
@@ -21,3 +22,5 @@ async def setup_database(db: Database) -> None:
                 await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
 
         await conn.run_sync(Base.metadata.create_all)
+
+    await seed_default_permission_grants(db)

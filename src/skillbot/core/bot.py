@@ -5,9 +5,13 @@ import pkgutil
 import discord
 from discord import app_commands
 from discord.ext import commands
+from skillcore.db import Database
+
+from skillbot.db.setup import setup_database
 
 from .app_command_logger import AppCommandLogger, AppCommandLogPolicy
 from .config import Settings
+from .permissions import PermissionDenied, PermissionService
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +22,8 @@ class SkillBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
         self.settings = settings
+        self.db = Database.from_url(str(settings.database.url))
+        self.permission_service = PermissionService(self.db)
 
         self.app_cmd_logger = AppCommandLogger(
             policy=AppCommandLogPolicy(
@@ -27,8 +33,13 @@ class SkillBot(commands.Bot):
         )
 
     async def setup_hook(self) -> None:
+        await setup_database(self.db)
         await self._load_extensions()
         await self._sync_app_commands()
+
+    async def close(self) -> None:
+        await super().close()
+        await self.db.dispose()
 
     async def on_ready(self) -> None:
         log.info("Logged in as %s", self.user)
@@ -38,6 +49,28 @@ class SkillBot(commands.Bot):
 
     async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError) -> None:
         await self.app_cmd_logger.log_error(interaction, getattr(interaction, "command", None), error)
+
+        denied_error: PermissionDenied | None = None
+        if isinstance(error, PermissionDenied):
+            denied_error = error
+        elif isinstance(getattr(error, "original", None), PermissionDenied):
+            denied_error = error.original
+
+        if denied_error:
+            message = str(denied_error)
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
+            return
+
+        if isinstance(error, app_commands.CheckFailure):
+            message = "Dafür fehlt dir die Berechtigung."
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
+            return
 
     async def _load_extensions(self) -> None:
         """

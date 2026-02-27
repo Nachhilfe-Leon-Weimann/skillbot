@@ -14,6 +14,17 @@ class MemberRole(StrEnum):
     student = "student"
 
 
+class PermissionSubjectType(StrEnum):
+    role = "role"
+    group = "group"
+    user = "user"
+
+
+class PermissionGrantEffect(StrEnum):
+    allow = "allow"
+    deny = "deny"
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
@@ -91,3 +102,61 @@ class TeacherStudent(Base):
     )
 
     channel_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class PermissionGroup(Base):
+    __tablename__ = "permission_groups"
+    __table_args__ = (
+        UniqueConstraint("key", name="uq_permission_groups_key"),
+        Index("ix_permission_groups_active", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    active: Mapped[bool] = mapped_column(nullable=False, default=True)
+
+    members: Mapped[list["PermissionGroupMember"]] = relationship(
+        back_populates="group",
+        cascade="all, delete-orphan",
+    )
+
+
+class PermissionGroupMember(Base):
+    __tablename__ = "permission_group_members"
+    __table_args__ = (UniqueConstraint("group_id", "user_id", name="uq_permission_group_members_group_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    group_id: Mapped[int] = mapped_column(
+        ForeignKey("permission_groups.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    group: Mapped["PermissionGroup"] = relationship(back_populates="members")
+    user: Mapped["User"] = relationship()
+
+
+class PermissionGrant(Base):
+    __tablename__ = "permission_grants"
+    __table_args__ = (
+        Index("ix_permission_grants_subject", "subject_type", "subject_key"),
+        Index("ix_permission_grants_action_key", "action_key"),
+        Index("ix_permission_grants_subject_action", "subject_type", "subject_key", "action_key"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    subject_type: Mapped[PermissionSubjectType] = mapped_column(
+        Enum(PermissionSubjectType, name="permission_subject_type"),
+        nullable=False,
+    )
+    subject_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    action_key: Mapped[str] = mapped_column(String(180), nullable=False)
+    effect: Mapped[PermissionGrantEffect] = mapped_column(
+        Enum(PermissionGrantEffect, name="permission_grant_effect"),
+        nullable=False,
+    )
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
