@@ -1,6 +1,6 @@
 {
   // Python / uv
-  "python.defaultInterpreterPath": ".venv/bin/python",
+  "python.defaultInterpreterPath": "$(workspaceFolder)/.venv/bin/python",
   "python.terminal.activateEnvironment": true,
   "python.analysis.extraPaths": ["../skillcore"],
 
