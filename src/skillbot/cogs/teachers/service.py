@@ -287,7 +287,7 @@ class TeacherEnableService:
         target: discord.Member,
         real_name: str,
     ) -> tuple[discord.CategoryChannel, bool]:
-        category_name = f"teacher-{target.id}"
+        category_name = self._teacher_alias(real_name)
 
         existing = discord.utils.get(guild.categories, name=category_name)
         if isinstance(existing, discord.CategoryChannel):
