@@ -13,7 +13,7 @@ from .models import (
 
 DEFAULT_PERMISSION_GRANTS: tuple[tuple[PermissionSubjectType, str, str, PermissionGrantEffect, int], ...] = (
     (PermissionSubjectType.role, MemberRole.admin.value, "*", PermissionGrantEffect.allow, 1000),
-    (PermissionSubjectType.role, MemberRole.teacher.value, "teachers.*", PermissionGrantEffect.allow, 200),
+    (PermissionSubjectType.role, MemberRole.admin.value, "teachers.*", PermissionGrantEffect.allow, 200),
     (PermissionSubjectType.role, MemberRole.teacher.value, "students.*", PermissionGrantEffect.allow, 200),
 )
 

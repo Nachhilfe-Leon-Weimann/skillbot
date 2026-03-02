@@ -1,6 +1,7 @@
 from enum import StrEnum
+from uuid import UUID
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, Index, Integer, MetaData, String, UniqueConstraint
+from sqlalchemy import BigInteger, Enum, ForeignKey, Index, Integer, MetaData, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -23,6 +24,11 @@ class PermissionSubjectType(StrEnum):
 class PermissionGrantEffect(StrEnum):
     allow = "allow"
     deny = "deny"
+
+
+class CommandEnvKind(StrEnum):
+    admin_cmd = "admin_cmd"
+    teacher_cmd = "teacher_cmd"
 
 
 class User(Base):
@@ -70,10 +76,16 @@ class TeacherProfile(Base):
 
 class StudentProfile(Base):
     __tablename__ = "student_profiles"
+    __table_args__ = (UniqueConstraint("party_id", name="uq_student_profiles_party_id"),)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
+    )
+    party_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("core.party.id", ondelete="RESTRICT"),
+        nullable=False,
     )
 
     user: Mapped["User"] = relationship(back_populates="student_profile")
@@ -160,3 +172,27 @@ class PermissionGrant(Base):
         nullable=False,
     )
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class CommandEnvChannel(Base):
+    __tablename__ = "command_env_channels"
+    __table_args__ = (
+        UniqueConstraint("channel_id", name="uq_command_env_channels_channel_id"),
+        Index("ix_command_env_channels_kind_active", "kind", "active"),
+        Index("ix_command_env_channels_owner_kind_active", "owner_user_id", "kind", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    guild_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    channel_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    kind: Mapped[CommandEnvKind] = mapped_column(
+        Enum(CommandEnvKind, name="command_env_kind"),
+        nullable=False,
+    )
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    active: Mapped[bool] = mapped_column(nullable=False, default=True)
+
+    owner_user: Mapped["User | None"] = relationship()

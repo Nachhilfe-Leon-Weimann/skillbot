@@ -7,6 +7,7 @@ import discord
 from skillcore.db import Database
 from sqlalchemy import and_, or_, select
 
+from skillbot.core.discord_roles import DiscordRoleResolver
 from skillbot.db.models import (
     MemberRole,
     PermissionGrant,
@@ -19,6 +20,8 @@ from skillbot.db.models import (
 
 
 class PermissionAction(StrEnum):
+    TEACHERS_ENABLE = "teachers.enable"
+    TEACHERS_TEST = "teachers.test"
     STUDENTS_ENABLE = "students.enable"
 
 
@@ -51,8 +54,9 @@ class _MatchedGrant:
 
 
 class PermissionService:
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, settings: object | None = None):
         self._db = db
+        self._role_resolver = DiscordRoleResolver(settings)
 
     async def authorize(
         self,
@@ -146,15 +150,8 @@ class PermissionService:
         if not isinstance(user, discord.Member):
             return None
 
-        role_names = {r.name.lower() for r in user.roles}
-
-        if {"admin", "administrator"} & role_names:
-            return MemberRole.admin.value
-        if {"teacher", "lehrer"} & role_names:
-            return MemberRole.teacher.value
-        if {"student", "schueler", "schüler"} & role_names:
-            return MemberRole.student.value
-        return None
+        role = self._role_resolver.member_primary_role(user)
+        return role.value if isinstance(role, MemberRole) else None
 
     async def _load_grants(self, principal: _PrincipalContext) -> list[PermissionGrant]:
         predicates = [

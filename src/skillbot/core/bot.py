@@ -11,7 +11,7 @@ from skillbot.db.setup import setup_database
 
 from .app_command_logger import AppCommandLogger, AppCommandLogPolicy
 from .config import Settings
-from .permissions import PermissionDenied, PermissionService
+from .permissions import CommandEnvironmentService, PermissionDenied, PermissionService
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,8 @@ class SkillBot(commands.Bot):
 
         self.settings = settings
         self.db = Database.from_url(str(settings.database.url))
-        self.permission_service = PermissionService(self.db)
+        self.permission_service = PermissionService(self.db, settings=settings)
+        self.command_env_service = CommandEnvironmentService(self.db, settings=settings)
 
         self.app_cmd_logger = AppCommandLogger(
             policy=AppCommandLogPolicy(
@@ -54,7 +55,7 @@ class SkillBot(commands.Bot):
         if isinstance(error, PermissionDenied):
             denied_error = error
         elif isinstance(getattr(error, "original", None), PermissionDenied):
-            denied_error = error.original
+            denied_error = error.original # type: ignore
 
         if denied_error:
             message = str(denied_error)
