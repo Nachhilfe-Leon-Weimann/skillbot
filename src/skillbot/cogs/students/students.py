@@ -17,7 +17,7 @@ class Students(commands.GroupCog, name="students"):
 
     def __init__(self, bot: SkillBot) -> None:
         self.bot = bot
-        self.enable_service = StudentEnableService(bot.db, bot.settings)
+        self.enable_service = StudentEnableService(bot.db)
         super().__init__()
 
     @commands.Cog.listener()

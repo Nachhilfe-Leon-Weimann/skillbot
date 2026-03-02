@@ -1,7 +1,5 @@
 from .settings import (
     DatabaseSettings,
-    DiscordRoleIds,
-    DiscordRoleNames,
     DiscordSettings,
     LoggingSettings,
     Settings,
@@ -10,8 +8,6 @@ from .settings import (
 
 __all__ = [
     "DatabaseSettings",
-    "DiscordRoleIds",
-    "DiscordRoleNames",
     "DiscordSettings",
     "LoggingSettings",
     "Settings",

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from skillcore.db import Database
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

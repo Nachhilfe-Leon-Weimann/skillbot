@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from skillbot.core.discord_roles import DiscordRoleResolver
 from skillbot.db.models import MemberRole
 
@@ -32,26 +30,17 @@ def test_resolver_uses_default_german_names() -> None:
     assert resolver.member_primary_role(member) == MemberRole.teacher
 
 
-def test_resolver_prefers_configured_id_and_name() -> None:
-    settings = SimpleNamespace(
-        discord=SimpleNamespace(
-            role_ids=SimpleNamespace(student=200),
-            role_names=SimpleNamespace(student="schüler"),
-        )
-    )
-    resolver = DiscordRoleResolver(settings)
+def test_resolver_finds_role_by_case_insensitive_name() -> None:
+    resolver = DiscordRoleResolver()
     guild = _Guild([_Role(200, "x"), _Role(201, "schüler")])
 
     role = resolver.resolve_guild_role(guild, MemberRole.student)
     assert role is not None
-    assert role.id == 200
+    assert role.id == 201
 
 
 def test_resolver_matches_ascii_alias_for_umlauts() -> None:
-    settings = SimpleNamespace(
-        discord=SimpleNamespace(role_names=SimpleNamespace(student="schüler")),
-    )
-    resolver = DiscordRoleResolver(settings)
+    resolver = DiscordRoleResolver()
     member = _Member([_Role(1, "schueler")])
 
     assert resolver.member_has_role(member, MemberRole.student) is True

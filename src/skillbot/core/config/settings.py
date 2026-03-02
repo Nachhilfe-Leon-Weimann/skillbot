@@ -1,20 +1,8 @@
 from functools import lru_cache
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from skillcore.config import DatabaseSettings, LoggingSettings
-
-
-class DiscordRoleIds(BaseModel):
-    student: int | None = None
-    teacher: int | None = None
-    admin: int | None = None
-
-
-class DiscordRoleNames(BaseModel):
-    student: str = "Schüler"
-    teacher: str = "Lehrer"
-    admin: str = "Admin"
 
 
 class DiscordSettings(BaseSettings):
@@ -32,8 +20,6 @@ class DiscordSettings(BaseSettings):
     token: SecretStr
     guild_id: int | None = None
     sync_commands: bool = False
-    role_ids: DiscordRoleIds = Field(default_factory=DiscordRoleIds)
-    role_names: DiscordRoleNames = Field(default_factory=DiscordRoleNames)
 
     model_config = SettingsConfigDict(
         env_prefix="DISCORD__",

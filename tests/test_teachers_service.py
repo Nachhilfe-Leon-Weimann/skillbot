@@ -1,12 +1,9 @@
 import asyncio
-import typing
-from types import SimpleNamespace
 
 import pytest
 from skillcore.db import Database
 
 from skillbot.cogs.teachers.service import TeacherEnableError, TeacherEnableService
-from skillbot.core.config import Settings
 from skillbot.core.permissions import CommandEnvironmentService
 
 
@@ -35,18 +32,9 @@ class _InteractionStub:
 
 
 def _service() -> TeacherEnableService:
-    settings = typing.cast(
-        Settings,
-        SimpleNamespace(
-            discord=SimpleNamespace(
-                role_ids=SimpleNamespace(student=None, teacher=None, admin=None),
-                role_names=SimpleNamespace(student="Schüler", teacher="Lehrer", admin="Admin"),
-            )
-        ),
-    )
-    db = typing.cast(Database, object())
-    cmd_env_service = typing.cast(CommandEnvironmentService, object())
-    return TeacherEnableService(db, settings, cmd_env_service)
+    db = Database.__new__(Database)  # lightweight placeholder; tests only call pure helper logic
+    cmd_env_service = CommandEnvironmentService.__new__(CommandEnvironmentService)
+    return TeacherEnableService(db, cmd_env_service)
 
 
 def test_teacher_autocomplete_excludes_students_and_active_teachers() -> None:

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -54,9 +52,9 @@ class _MatchedGrant:
 
 
 class PermissionService:
-    def __init__(self, db: Database, settings: object | None = None):
+    def __init__(self, db: Database):
         self._db = db
-        self._role_resolver = DiscordRoleResolver(settings)
+        self._role_resolver = DiscordRoleResolver()
 
     async def authorize(
         self,

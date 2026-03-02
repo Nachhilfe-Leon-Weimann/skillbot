@@ -1,13 +1,10 @@
 import asyncio
-import typing
-from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
 from skillcore.db import Database
 
 from skillbot.cogs.students.service import CustomerResolver, StudentEnableError, StudentEnableService
-from skillbot.core.config import Settings
 
 
 class _MemberStub:
@@ -28,12 +25,8 @@ class _InteractionStub:
 
 
 def _service() -> StudentEnableService:
-    settings = typing.cast(
-        Settings,
-        SimpleNamespace(discord=SimpleNamespace(role_ids=SimpleNamespace(student=123))),
-    )
-    db = typing.cast(Database, object())
-    return StudentEnableService(db, settings)
+    db = Database.__new__(Database)  # lightweight placeholder; tests only call pure helper logic
+    return StudentEnableService(db)
 
 
 def test_customer_resolver_prefers_student_role_party() -> None:

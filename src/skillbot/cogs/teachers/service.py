@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 from dataclasses import dataclass
 
@@ -8,7 +6,6 @@ from discord import app_commands
 from skillcore.db import Database
 from sqlalchemy import select
 
-from skillbot.core.config import Settings
 from skillbot.core.discord_roles import DiscordRoleResolver
 from skillbot.core.permissions import CommandEnvironmentService
 from skillbot.db.models import CommandEnvKind, MemberRole, StudentProfile, TeacherProfile, User
@@ -46,12 +43,10 @@ class TeacherEnableService:
     def __init__(
         self,
         db: Database,
-        settings: Settings,
         command_env_service: CommandEnvironmentService,
     ):
         self._db = db
-        self._settings = settings
-        self._role_resolver = DiscordRoleResolver(settings)
+        self._role_resolver = DiscordRoleResolver()
         self._command_env_service = command_env_service
 
     async def autocomplete_discord_name(
@@ -110,8 +105,7 @@ class TeacherEnableService:
 
         teacher_role = self._role_resolver.resolve_guild_role(guild, MemberRole.teacher)
         if teacher_role is None:
-            expected = self._settings.discord.role_names.teacher
-            raise TeacherEnableError(f"Lehrer-Rolle nicht gefunden (erwartet: `{expected}`).")
+            raise TeacherEnableError("Lehrer-Rolle `Lehrer` wurde nicht gefunden.")
 
         target = discord.utils.get(guild.members, name=discord_name)
         if target is None:

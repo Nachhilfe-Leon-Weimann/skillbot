@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import discord
@@ -20,9 +18,9 @@ class CmdEnvDecision:
 
 
 class CommandEnvironmentService:
-    def __init__(self, db: Database, settings: object | None = None):
+    def __init__(self, db: Database):
         self._db = db
-        self._role_resolver = DiscordRoleResolver(settings)
+        self._role_resolver = DiscordRoleResolver()
 
     async def authorize(
         self,
@@ -158,9 +156,7 @@ class CommandEnvironmentService:
         owner_user_id: int | None,
     ) -> None:
         async with self._db.session() as session:
-            existing = await session.scalar(
-                select(CommandEnvChannel).where(CommandEnvChannel.channel_id == channel_id)
-            )
+            existing = await session.scalar(select(CommandEnvChannel).where(CommandEnvChannel.channel_id == channel_id))
             if existing is None:
                 session.add(
                     CommandEnvChannel(

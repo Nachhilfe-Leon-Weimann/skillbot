@@ -23,8 +23,8 @@ class SkillBot(commands.Bot):
 
         self.settings = settings
         self.db = Database.from_url(str(settings.database.url))
-        self.permission_service = PermissionService(self.db, settings=settings)
-        self.command_env_service = CommandEnvironmentService(self.db, settings=settings)
+        self.permission_service = PermissionService(self.db)
+        self.command_env_service = CommandEnvironmentService(self.db)
 
         self.app_cmd_logger = AppCommandLogger(
             policy=AppCommandLogPolicy(

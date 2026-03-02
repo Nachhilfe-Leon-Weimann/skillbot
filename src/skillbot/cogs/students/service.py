@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 from dataclasses import dataclass
 from uuid import UUID
@@ -10,7 +8,6 @@ from skillcore.db import Database
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from skillbot.core.config import Settings
 from skillbot.core.discord_roles import DiscordRoleResolver
 from skillbot.db.models import MemberRole, StudentProfile, TeacherStudent, User
 
@@ -119,11 +116,10 @@ class CustomerResolver:
 
 
 class StudentEnableService:
-    def __init__(self, db: Database, settings: Settings):
+    def __init__(self, db: Database):
         self._db = db
-        self._settings = settings
         self._resolver = CustomerResolver()
-        self._role_resolver = DiscordRoleResolver(settings)
+        self._role_resolver = DiscordRoleResolver()
 
     async def autocomplete_discord_name(
         self,
@@ -168,10 +164,7 @@ class StudentEnableService:
 
         student_role = self._role_resolver.resolve_guild_role(guild, MemberRole.student)
         if student_role is None:
-            expected_name = self._settings.discord.role_names.student
-            raise StudentEnableError(
-                f"Die Student-Rolle wurde nicht gefunden (erwartet: `{expected_name}` oder konfigurierte Role-ID)."
-            )
+            raise StudentEnableError("Die Student-Rolle `Schüler` wurde nicht gefunden.")
 
         target = discord.utils.get(guild.members, name=discord_name)
         if target is None:
