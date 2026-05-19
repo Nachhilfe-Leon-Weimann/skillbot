@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-from skillcore.db import Database
 
 from skillbot.cogs.teachers.service import TeacherEnableError, TeacherEnableService
 from skillbot.core.permissions import CommandEnvironmentService
@@ -32,9 +31,8 @@ class _InteractionStub:
 
 
 def _service() -> TeacherEnableService:
-    db = Database.__new__(Database)  # lightweight placeholder; tests only call pure helper logic
     cmd_env_service = CommandEnvironmentService.__new__(CommandEnvironmentService)
-    return TeacherEnableService(db, cmd_env_service)
+    return TeacherEnableService(command_env_service=cmd_env_service)
 
 
 def test_teacher_autocomplete_excludes_students_and_active_teachers() -> None:

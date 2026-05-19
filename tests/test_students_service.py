@@ -2,7 +2,6 @@ import asyncio
 from uuid import UUID, uuid4
 
 import pytest
-from skillcore.db import Database
 
 from skillbot.cogs.students.service import CustomerResolver, StudentEnableError, StudentEnableService
 
@@ -25,8 +24,7 @@ class _InteractionStub:
 
 
 def _service() -> StudentEnableService:
-    db = Database.__new__(Database)  # lightweight placeholder; tests only call pure helper logic
-    return StudentEnableService(db)
+    return StudentEnableService()
 
 
 def test_customer_resolver_prefers_student_role_party() -> None:

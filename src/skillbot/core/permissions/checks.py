@@ -1,10 +1,12 @@
 import discord
 from discord import app_commands
 
-from skillbot.db.models import CommandEnvKind
+from skillbot.core.models import CommandEnvKind
 
 from .cmd_env import CmdEnvDecision, CommandEnvironmentService
 from .service import PermissionAction, PermissionDecision, PermissionService
+
+# region Exceptions
 
 
 class PermissionDenied(app_commands.CheckFailure):
@@ -17,6 +19,9 @@ class CmdEnvDenied(app_commands.CheckFailure):
     def __init__(self, decision: CmdEnvDecision):
         super().__init__(f"Dieser Command ist nur in einem gültigen `{decision.kind}`-Channel erlaubt.")
         self.decision = decision
+
+
+# region Helpers
 
 
 def _permission_service(interaction: discord.Interaction) -> PermissionService:
@@ -39,6 +44,9 @@ def _command_env_service(interaction: discord.Interaction) -> CommandEnvironment
 
 def _store_cmd_env_decision(interaction: discord.Interaction, decision: CmdEnvDecision) -> None:
     interaction.extras["cmd_env_decision"] = decision
+
+
+# region Checks
 
 
 def require_action(action: PermissionAction | str):

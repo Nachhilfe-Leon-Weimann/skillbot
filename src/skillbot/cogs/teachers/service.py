@@ -3,12 +3,11 @@ from dataclasses import dataclass
 
 import discord
 from discord import app_commands
-from skillcore.db import Database
-from sqlalchemy import select
 
 from skillbot.core.discord_roles import DiscordRoleResolver
+from skillbot.core.models import ActivateTeacherRequest, CommandEnvKind, MemberRole
 from skillbot.core.permissions import CommandEnvironmentService
-from skillbot.db.models import CommandEnvKind, MemberRole, StudentProfile, TeacherProfile, User
+from skillbot.core.skillforge import SkillforgeClient, SkillforgeClientNotConfigured
 
 log = logging.getLogger(__name__)
 
@@ -30,22 +29,13 @@ class TeacherEnableResult:
     cmd_channel_id: int
 
 
-@dataclass(frozen=True)
-class _UserState:
-    user_id: int
-    created_user: bool
-    previous_role: MemberRole | None
-    previous_full_name: str | None
-    existing_category_id: int | None
-
-
 class TeacherEnableService:
     def __init__(
         self,
-        db: Database,
-        command_env_service: CommandEnvironmentService,
+        client: SkillforgeClient | None = None,
+        command_env_service: CommandEnvironmentService | None = None,
     ):
-        self._db = db
+        self._client = client if client is not None else SkillforgeClientNotConfigured()
         self._role_resolver = DiscordRoleResolver()
         self._command_env_service = command_env_service
 
@@ -95,13 +85,14 @@ class TeacherEnableService:
         if not self._role_resolver.member_has_role(interaction.user, MemberRole.admin):
             raise TeacherEnableError("Nur Admins dürfen Lehrkräfte aktivieren.")
 
-        cmd_decision = await self._command_env_service.authorize(
-            interaction,
-            kind=CommandEnvKind.admin_cmd,
-            owner_bound=False,
-        )
-        if not cmd_decision.allowed:
-            raise TeacherEnableError(str(cmd_decision.reason))
+        if self._command_env_service is not None:
+            decision = await self._command_env_service.authorize(
+                interaction,
+                kind=CommandEnvKind.admin_cmd,
+                owner_bound=False,
+            )
+            if not decision.allowed:
+                raise TeacherEnableError(str(decision.reason))
 
         teacher_role = self._role_resolver.resolve_guild_role(guild, MemberRole.teacher)
         if teacher_role is None:
@@ -118,52 +109,6 @@ class TeacherEnableService:
         alias = self._teacher_alias(real_name)
         previous_nick = target.nick
         had_teacher_role = self._role_resolver.member_has_role(target, MemberRole.teacher)
-
-        user_state = await self._upsert_teacher_user(target.id, real_name)
-        if user_state.existing_category_id is not None:
-            category = guild.get_channel(user_state.existing_category_id)  # type: ignore
-            if isinstance(category, discord.CategoryChannel):
-                cmd_channel_id = await self._command_env_service.get_owner_channel_id(
-                    guild_id=guild.id,
-                    owner_user_id=user_state.user_id,
-                    kind=CommandEnvKind.teacher_cmd,
-                )
-                if cmd_channel_id is not None and isinstance(guild.get_channel(cmd_channel_id), discord.TextChannel):
-                    role_added = False
-                    nick_changed = False
-                    try:
-                        await target.add_roles(
-                            teacher_role,
-                            reason=f"Activated via /teachers enable by {interaction.user.id}",
-                        )
-                        role_added = not had_teacher_role
-                        await target.edit(
-                            nick=alias,
-                            reason=f"Teacher alias set by {interaction.user.id}",
-                        )
-                        nick_changed = previous_nick != alias
-                    except Exception as exc:
-                        log.exception("teachers.enable failed in reuse path", exc_info=exc)
-                        if role_added:
-                            try:
-                                await target.remove_roles(teacher_role, reason="Rollback after failed teachers.enable")
-                            except Exception as rollback_exc:  # pragma: no cover
-                                log.exception("Rollback failed for teacher role", exc_info=rollback_exc)
-                        if nick_changed:
-                            try:
-                                await target.edit(nick=previous_nick, reason="Rollback after failed teachers.enable")
-                            except Exception as rollback_exc:  # pragma: no cover
-                                log.exception("Rollback failed for teacher nickname", exc_info=rollback_exc)
-                        await self._rollback_user(user_state)
-                        raise TeacherEnableError("Lehrer-Aktivierung fehlgeschlagen und wurde zurückgerollt.") from exc
-                    return TeacherEnableResult(
-                        target_discord_id=target.id,
-                        target_discord_name=target.name,
-                        teacher_user_id=user_state.user_id,
-                        category_id=category.id,
-                        cmd_channel_id=cmd_channel_id,
-                    )
-
         category_created = False
         channel_created = False
         role_added = False
@@ -174,31 +119,23 @@ class TeacherEnableService:
         try:
             await target.add_roles(teacher_role, reason=f"Activated via /teachers enable by {interaction.user.id}")
             role_added = not had_teacher_role
-            await target.edit(
-                nick=alias,
-                reason=f"Teacher alias set by {interaction.user.id}",
-            )
+            await target.edit(nick=alias, reason=f"Teacher alias set by {interaction.user.id}")
             nick_changed = previous_nick != alias
 
             category, category_created = await self._ensure_teacher_category(guild, target, real_name)
             cmd_channel, channel_created = await self._ensure_teacher_cmd_channel(category)
 
-            await self._persist_teacher_profile(
-                user_id=user_state.user_id,
-                category_id=category.id,
+            teacher = await self._client.activate_teacher(
+                ActivateTeacherRequest(
+                    discord_id=target.id,
+                    full_name=real_name.strip(),
+                    teaching_category_id=category.id,
+                    command_channel_id=cmd_channel.id,
+                )
             )
-            await self._command_env_service.upsert_channel(
-                guild_id=guild.id,
-                channel_id=cmd_channel.id,
-                kind=CommandEnvKind.teacher_cmd,
-                owner_user_id=user_state.user_id,
-            )
-        except TeacherAlreadyEnabled:
-            raise
         except Exception as exc:
             log.exception("teachers.enable failed", exc_info=exc)
             await self._compensate(
-                user_state=user_state,
                 target=target,
                 teacher_role=teacher_role,
                 role_added=role_added,
@@ -214,72 +151,15 @@ class TeacherEnableService:
         return TeacherEnableResult(
             target_discord_id=target.id,
             target_discord_name=target.name,
-            teacher_user_id=user_state.user_id,
+            teacher_user_id=teacher.user_id,
             category_id=category.id,
             cmd_channel_id=cmd_channel.id,
         )
 
     async def _teacher_and_student_discord_ids(self) -> tuple[set[int], set[int]]:
-        async with self._db.session() as session:
-            teacher_rows = await session.scalars(
-                select(User.discord_id).join(TeacherProfile, TeacherProfile.user_id == User.id)
-            )
-            teachers = set(teacher_rows.all())
-
-            student_rows = await session.scalars(select(User.discord_id).where(User.role == MemberRole.student))
-            students = set(student_rows.all())
-
-            profile_rows = await session.scalars(
-                select(User.discord_id).join(StudentProfile, StudentProfile.user_id == User.id)
-            )
-            students.update(profile_rows.all())
-
-            return teachers, students
-
-    async def _upsert_teacher_user(self, discord_id: int, real_name: str) -> _UserState:
-        normalized_name = real_name.strip()
-        if not normalized_name:
-            raise TeacherEnableError("real_name darf nicht leer sein.")
-
-        async with self._db.session() as session:
-            user = await session.scalar(select(User).where(User.discord_id == discord_id))
-            created_user = False
-            previous_role: MemberRole | None = None
-            previous_full_name: str | None = None
-
-            if user is None:
-                user = User(
-                    discord_id=discord_id,
-                    full_name=normalized_name,
-                    role=MemberRole.teacher,
-                )
-                session.add(user)
-                await session.flush()
-                created_user = True
-            else:
-                student_profile = await session.scalar(select(StudentProfile).where(StudentProfile.user_id == user.id))
-                if student_profile is not None or user.role == MemberRole.student:
-                    raise TeacherEnableError("Schüler können nicht als Lehrkräfte aktiviert werden.")
-
-                if user.role != MemberRole.teacher:
-                    previous_role = user.role
-                    user.role = MemberRole.teacher
-
-                if user.full_name != normalized_name:
-                    previous_full_name = user.full_name
-                    user.full_name = normalized_name
-
-            teacher_profile = await session.scalar(select(TeacherProfile).where(TeacherProfile.user_id == user.id))
-            existing_category_id = teacher_profile.teaching_category_id if teacher_profile else None
-
-            await session.commit()
-            return _UserState(
-                user_id=user.id,
-                created_user=created_user,
-                previous_role=previous_role,
-                previous_full_name=previous_full_name,
-                existing_category_id=existing_category_id,
-            )
+        teacher_ids = await self._client.list_teacher_discord_ids()
+        student_ids = await self._client.list_student_discord_ids()
+        return teacher_ids, student_ids
 
     async def _ensure_teacher_category(
         self,
@@ -296,7 +176,7 @@ class TeacherEnableService:
         overwrites = self._category_overwrites(guild, target)
         category = await guild.create_category(
             name=category_name,
-            overwrites=overwrites,  # type: ignore
+            overwrites=overwrites,  # type: ignore[arg-type]
             reason=f"Teacher category for {real_name}",
         )
         return category, True
@@ -309,25 +189,9 @@ class TeacherEnableService:
         channel = await category.create_text_channel("cmd", reason="Teacher command channel")
         return channel, True
 
-    async def _persist_teacher_profile(self, *, user_id: int, category_id: int) -> None:
-        async with self._db.session() as session:
-            profile = await session.scalar(select(TeacherProfile).where(TeacherProfile.user_id == user_id))
-            if profile is None:
-                session.add(
-                    TeacherProfile(
-                        user_id=user_id,
-                        teaching_category_id=category_id,
-                    )
-                )
-            else:
-                profile.teaching_category_id = category_id
-
-            await session.commit()
-
     async def _compensate(
         self,
         *,
-        user_state: _UserState,
         target: discord.Member,
         teacher_role: discord.Role,
         role_added: bool,
@@ -361,24 +225,6 @@ class TeacherEnableService:
                 await category.delete(reason="Rollback after failed teachers.enable")
             except Exception as exc:  # pragma: no cover
                 log.exception("Rollback failed for teacher category", exc_info=exc)
-
-        await self._rollback_user(user_state)
-
-    async def _rollback_user(self, state: _UserState) -> None:
-        async with self._db.session() as session:
-            user = await session.scalar(select(User).where(User.id == state.user_id))
-            if user is None:
-                return
-
-            if state.created_user:
-                await session.delete(user)
-            else:
-                if state.previous_role is not None:
-                    user.role = state.previous_role
-                if state.previous_full_name is not None:
-                    user.full_name = state.previous_full_name
-
-            await session.commit()
 
     def _category_overwrites(
         self,

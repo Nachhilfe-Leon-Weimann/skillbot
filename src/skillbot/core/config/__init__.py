@@ -1,15 +1,15 @@
 from .settings import (
-    DatabaseSettings,
     DiscordSettings,
     LoggingSettings,
     Settings,
+    SkillforgeSettings,
     get_settings,
 )
 
 __all__ = [
-    "DatabaseSettings",
     "DiscordSettings",
     "LoggingSettings",
     "Settings",
+    "SkillforgeSettings",
     "get_settings",
 ]

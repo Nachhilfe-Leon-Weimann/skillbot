@@ -5,13 +5,11 @@ import pkgutil
 import discord
 from discord import app_commands
 from discord.ext import commands
-from skillcore.db import Database
-
-from skillbot.db.setup import setup_database
 
 from .app_command_logger import AppCommandLogger, AppCommandLogPolicy
 from .config import Settings
 from .permissions import CommandEnvironmentService, PermissionDenied, PermissionService
+from .skillforge import HttpSkillforgeClient, SkillforgeClient, SkillforgeClientNotConfigured
 
 log = logging.getLogger(__name__)
 
@@ -22,9 +20,9 @@ class SkillBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
         self.settings = settings
-        self.db = Database.from_url(str(settings.database.url))
-        self.permission_service = PermissionService(self.db)
-        self.command_env_service = CommandEnvironmentService(self.db)
+        self.skillforge = self._build_skillforge_client(settings)
+        self.permission_service = PermissionService(self.skillforge)
+        self.command_env_service = CommandEnvironmentService(self.skillforge)
 
         self.app_cmd_logger = AppCommandLogger(
             policy=AppCommandLogPolicy(
@@ -34,13 +32,12 @@ class SkillBot(commands.Bot):
         )
 
     async def setup_hook(self) -> None:
-        await setup_database(self.db)
         await self._load_extensions()
         await self._sync_app_commands()
 
     async def close(self) -> None:
         await super().close()
-        await self.db.dispose()
+        await self.skillforge.close()
 
     async def on_ready(self) -> None:
         log.info("Logged in as %s", self.user)
@@ -55,7 +52,7 @@ class SkillBot(commands.Bot):
         if isinstance(error, PermissionDenied):
             denied_error = error
         elif isinstance(getattr(error, "original", None), PermissionDenied):
-            denied_error = error.original # type: ignore
+            denied_error = error.original  # type: ignore[assignment]
 
         if denied_error:
             message = str(denied_error)
@@ -125,3 +122,15 @@ class SkillBot(commands.Bot):
                 log.debug("Synced %d global commands", len(synced))
         except Exception:
             log.exception("Syncing app commands failed (continuing without sync)")
+
+    def _build_skillforge_client(self, settings: Settings) -> SkillforgeClient:
+        if settings.skillforge.base_url is None:
+            log.warning("SKILLFORGE__BASE_URL is not configured; API-backed commands will fail.")
+            return SkillforgeClientNotConfigured()
+
+        token = settings.skillforge.token.get_secret_value() if settings.skillforge.token is not None else None
+        return HttpSkillforgeClient(
+            base_url=settings.skillforge.base_url,
+            token=token,
+            timeout_seconds=settings.skillforge.timeout_seconds,
+        )

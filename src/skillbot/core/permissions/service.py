@@ -2,19 +2,18 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 import discord
-from skillcore.db import Database
-from sqlalchemy import and_, or_, select
 
 from skillbot.core.discord_roles import DiscordRoleResolver
-from skillbot.db.models import (
+from skillbot.core.models import (
     MemberRole,
     PermissionGrant,
     PermissionGrantEffect,
-    PermissionGroup,
-    PermissionGroupMember,
+    PermissionSubject,
     PermissionSubjectType,
-    User,
 )
+from skillbot.core.skillforge import SkillforgeClient, SkillforgeClientNotConfigured
+
+# region Config
 
 
 class PermissionAction(StrEnum):
@@ -26,6 +25,9 @@ class PermissionAction(StrEnum):
 class PermissionEffect(StrEnum):
     allow = "allow"
     deny = "deny"
+
+
+# region Models
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,16 @@ class _PrincipalContext:
     group_subject_keys: tuple[str, ...]
     role_subject_key: str | None
 
+    @property
+    def subjects(self) -> tuple[PermissionSubject, ...]:
+        subjects: list[PermissionSubject] = [
+            PermissionSubject(PermissionSubjectType.user, self.user_subject_key),
+        ]
+        subjects.extend(PermissionSubject(PermissionSubjectType.group, key) for key in self.group_subject_keys)
+        if self.role_subject_key:
+            subjects.append(PermissionSubject(PermissionSubjectType.role, self.role_subject_key))
+        return tuple(subjects)
+
 
 @dataclass(frozen=True)
 class _MatchedGrant:
@@ -51,10 +63,20 @@ class _MatchedGrant:
     specificity: int
 
 
+# region Service
+
+
 class PermissionService:
-    def __init__(self, db: Database):
-        self._db = db
-        self._role_resolver = DiscordRoleResolver()
+    def __init__(
+        self,
+        client: SkillforgeClient | None = None,
+        *,
+        db: object | None = None,
+        role_resolver: DiscordRoleResolver | None = None,
+    ) -> None:
+        del db  # compatibility only; permissions no longer use the DB directly.
+        self._client = client or SkillforgeClientNotConfigured()
+        self._role_resolver = role_resolver or DiscordRoleResolver()
 
     async def authorize(
         self,
@@ -63,10 +85,10 @@ class PermissionService:
         *,
         context: dict | None = None,
     ) -> PermissionDecision:
-        del context  # currently unused, reserved for future resource-scoped checks.
+        del context  # reserved for future resource-scoped checks.
         action_key = self._normalize_action(action)
 
-        principal = await self._resolve_principals(interaction)
+        principal = await self._resolve_principal(interaction)
         if principal is None:
             return PermissionDecision(
                 allowed=False,
@@ -76,7 +98,7 @@ class PermissionService:
                 matched_subject=None,
             )
 
-        grants = await self._load_grants(principal)
+        grants = await self._client.list_permission_grants(principal.subjects)
         return self._evaluate_grants(action_key, grants)
 
     async def can(
@@ -106,7 +128,7 @@ class PermissionService:
             return action.value
         return str(action).strip()
 
-    async def _resolve_principals(self, interaction: discord.Interaction) -> _PrincipalContext | None:
+    async def _resolve_principal(self, interaction: discord.Interaction) -> _PrincipalContext | None:
         user = interaction.user
         if user is None:
             return None
@@ -115,32 +137,15 @@ class PermissionService:
         if discord_user_id is None:
             return None
 
-        user_subject_key = str(discord_user_id)
-        group_subject_keys: tuple[str, ...] = ()
-        role_subject_key: str | None = None
-
-        async with self._db.session() as session:
-            db_user = await session.scalar(select(User).where(User.discord_id == discord_user_id))
-
-            if db_user is not None:
-                role_subject_key = db_user.role.value
-                group_keys = await session.scalars(
-                    select(PermissionGroup.key)
-                    .join(PermissionGroupMember, PermissionGroupMember.group_id == PermissionGroup.id)
-                    .where(
-                        PermissionGroupMember.user_id == db_user.id,
-                        PermissionGroup.active.is_(True),
-                    )
-                )
-                group_subject_keys = tuple(group_keys.all())
-
+        principal = await self._client.get_permission_principal(discord_user_id)
+        role_subject_key = principal.role_key if principal is not None else None
         if role_subject_key is None:
             role_subject_key = self._fallback_role_from_discord(user)
 
         return _PrincipalContext(
             discord_user_id=discord_user_id,
-            user_subject_key=user_subject_key,
-            group_subject_keys=group_subject_keys,
+            user_subject_key=str(discord_user_id),
+            group_subject_keys=principal.group_keys if principal is not None else (),
             role_subject_key=role_subject_key,
         )
 
@@ -150,34 +155,6 @@ class PermissionService:
 
         role = self._role_resolver.member_primary_role(user)
         return role.value if isinstance(role, MemberRole) else None
-
-    async def _load_grants(self, principal: _PrincipalContext) -> list[PermissionGrant]:
-        predicates = [
-            and_(
-                PermissionGrant.subject_type == PermissionSubjectType.user,
-                PermissionGrant.subject_key == principal.user_subject_key,
-            )
-        ]
-
-        for group_key in principal.group_subject_keys:
-            predicates.append(
-                and_(
-                    PermissionGrant.subject_type == PermissionSubjectType.group,
-                    PermissionGrant.subject_key == group_key,
-                )
-            )
-
-        if principal.role_subject_key:
-            predicates.append(
-                and_(
-                    PermissionGrant.subject_type == PermissionSubjectType.role,
-                    PermissionGrant.subject_key == principal.role_subject_key,
-                )
-            )
-
-        async with self._db.session() as session:
-            result = await session.scalars(select(PermissionGrant).where(or_(*predicates)))
-            return list(result.all())
 
     def _evaluate_grants(self, action_key: str, grants: list[PermissionGrant]) -> PermissionDecision:
         user_group_matches: list[_MatchedGrant] = []

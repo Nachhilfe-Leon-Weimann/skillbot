@@ -1,11 +1,12 @@
 from functools import lru_cache
 
 from pydantic import BaseModel, SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from skillcore.config import DatabaseSettings, LoggingSettings
+from pydantic_settings import SettingsConfigDict
+from skillcore.config import CoreSettings
+from skillcore.logging import LoggingSettings
 
 
-class DiscordSettings(BaseSettings):
+class DiscordSettings(CoreSettings):
     """
     Discord settings loaded from environment/.env.
 
@@ -30,6 +31,20 @@ class DiscordSettings(BaseSettings):
     )
 
 
+class SkillforgeSettings(CoreSettings):
+    base_url: str | None = None
+    token: SecretStr | None = None
+    timeout_seconds: float = 10.0
+
+    model_config = SettingsConfigDict(
+        env_prefix="SKILLFORGE__",
+        env_nested_delimiter="__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
 class Settings(BaseModel):
     """
     Pure container: no env loading here.
@@ -37,14 +52,14 @@ class Settings(BaseModel):
     """
 
     discord: DiscordSettings
-    database: DatabaseSettings
     logging: LoggingSettings
+    skillforge: SkillforgeSettings
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        discord=DiscordSettings(),  # pyright: ignore[reportCallIssue]
-        database=DatabaseSettings(),  # pyright: ignore[reportCallIssue]
-        logging=LoggingSettings(),
+        discord=DiscordSettings.from_env(),
+        logging=LoggingSettings.from_env(),
+        skillforge=SkillforgeSettings.from_env(),
     )

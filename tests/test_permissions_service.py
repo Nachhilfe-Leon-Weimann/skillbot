@@ -1,9 +1,5 @@
-import typing
-
-from skillcore.db import Database
-
+from skillbot.core.models import PermissionGrant, PermissionGrantEffect, PermissionSubjectType
 from skillbot.core.permissions.service import PermissionService
-from skillbot.db.models import PermissionGrant, PermissionGrantEffect, PermissionSubjectType
 
 
 def _grant(
@@ -24,7 +20,7 @@ def _grant(
 
 
 def _service() -> PermissionService:
-    return PermissionService(db=typing.cast(Database, object()))
+    return PermissionService()
 
 
 def test_user_allow_overrides_role_deny() -> None:

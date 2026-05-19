@@ -4,10 +4,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from skillbot.cogs.students.service import StudentAlreadyEnabled, StudentEnableError, StudentEnableService
+from skillbot.cogs.students.service import StudentEnableError, StudentEnableService
 from skillbot.core.bot import SkillBot
+from skillbot.core.models import CommandEnvKind
 from skillbot.core.permissions import PermissionAction, require_action, require_cmd_env
-from skillbot.db.models import CommandEnvKind
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class Students(commands.GroupCog, name="students"):
 
     def __init__(self, bot: SkillBot) -> None:
         self.bot = bot
-        self.enable_service = StudentEnableService(bot.db)
+        self.service = StudentEnableService(bot.skillforge)
         super().__init__()
 
     @commands.Cog.listener()
@@ -38,28 +38,18 @@ class Students(commands.GroupCog, name="students"):
         customer_id: int,
     ):
         try:
-            result = await self.enable_service.enable_student(
+            result = await self.service.enable_student(
                 interaction,
                 discord_name=discord_name,
                 real_name=real_name,
                 customer_id=customer_id,
             )
-        except StudentAlreadyEnabled:
-            await interaction.response.send_message(
-                f"Der Account `{discord_name}` ist bereits aktiviert.",
-                ephemeral=True,
-            )
-            return
         except StudentEnableError as exc:
             await interaction.response.send_message(str(exc), ephemeral=True)
             return
 
         await interaction.response.send_message(
-            (
-                f"Schüler `{result.target_discord_name}` wurde aktiviert.\n"
-                f"Alias: `{result.alias}`\n"
-                f"Party-ID: `{result.party_id}`"
-            ),
+            f"`{result.target_discord_name}` wurde als Schüler aktiviert.",
             ephemeral=True,
         )
 
@@ -69,4 +59,4 @@ class Students(commands.GroupCog, name="students"):
         interaction: discord.Interaction,
         current: str,
     ) -> list[app_commands.Choice[str]]:
-        return await self.enable_service.autocomplete_discord_name(interaction, current)
+        return await self.service.autocomplete_discord_name(interaction, current)

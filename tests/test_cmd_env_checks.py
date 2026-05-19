@@ -2,9 +2,9 @@ import asyncio
 
 import pytest
 
+from skillbot.core.models import CommandEnvKind
 from skillbot.core.permissions.checks import CmdEnvDenied, require_cmd_env
 from skillbot.core.permissions.cmd_env import CmdEnvDecision
-from skillbot.db.models import CommandEnvKind
 
 
 class _CommandEnvServiceStub:
