@@ -10,8 +10,8 @@
     "**/__pycache__": true,
     "**/.ruff_cache": true,
     "**/.pytest_cache": true,
-    "**/.vscode": true,
-    "**/.idea": true,
-    "**/.github": true
+    "**/.idea": true
+    // "**/.vscode": true,
+    // "**/.github": true
   }
 }
