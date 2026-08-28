@@ -1,8 +1,7 @@
 import asyncio
 import logging
 
-import discord
-from skillcore.logging import configure_logging
+from skillcore.logging import configure_logging, get_logger
 
 from skillbot.core.bot import SkillBot
 from skillbot.core.config import get_settings
@@ -10,31 +9,27 @@ from skillbot.core.config import get_settings
 
 def _prepare_logging() -> None:
     settings = get_settings()
-    configure_logging(level=settings.logging.level_int())
+    configure_logging(settings=settings.logging)
 
     logging.getLogger("discord").setLevel(logging.WARNING)
 
 
 async def main() -> None:
     _prepare_logging()
+    logger = get_logger(__name__)
 
     settings = get_settings()
     bot = SkillBot(settings)
 
     async with bot:
         try:
-            await bot.start(settings.discord.token.get_secret_value())
-        except discord.LoginFailure:
-            print("Invalid token (DISCORD_TOKEN)")
-        except discord.HTTPException as e:
-            print(f"Discord HTTP error: {e}")
+            await bot.launch()
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.exception("Unexpected error during bot launch: %s", e)
 
 
 if __name__ == "__main__":
-    print("Start bot execution")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Cancelled bot execution")
+        print("\033[1;31m\nCancelled bot execution\n\033[0m")

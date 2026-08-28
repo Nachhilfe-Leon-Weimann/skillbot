@@ -1,17 +1,17 @@
 import importlib
-import logging
 import pkgutil
 
 import discord
 from discord import app_commands
 from discord.ext import commands
+from skillcore.logging import get_logger
 
 from .app_command_logger import AppCommandLogger, AppCommandLogPolicy
 from .config import Settings
 from .permissions import CommandEnvironmentService, PermissionDenied, PermissionService
 from .skillforge import HttpSkillforgeClient, SkillforgeClient, SkillforgeClientNotConfigured
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class SkillBot(commands.Bot):
@@ -20,7 +20,7 @@ class SkillBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
         self.settings = settings
-        self.skillforge = self._build_skillforge_client(settings)
+        self.skillforge = self._build_skillforge_client()
         self.permission_service = PermissionService(self.skillforge)
         self.command_env_service = CommandEnvironmentService(self.skillforge)
 
@@ -69,6 +69,15 @@ class SkillBot(commands.Bot):
             else:
                 await interaction.response.send_message(message, ephemeral=True)
             return
+
+    async def launch(self) -> None:
+        try:
+            await self.start(token=self.settings.discord.token.get_secret_value(), reconnect=True)
+        except discord.LoginFailure:
+            log.critical("Invalid or missing Discord token (DISCORD__TOKEN). Bot cannot start.")
+            raise
+        except discord.HTTPException as e:
+            log.critical("Discord HTTP error during bot launch: %s", e)
 
     async def _load_extensions(self) -> None:
         """
@@ -123,14 +132,16 @@ class SkillBot(commands.Bot):
         except Exception:
             log.exception("Syncing app commands failed (continuing without sync)")
 
-    def _build_skillforge_client(self, settings: Settings) -> SkillforgeClient:
-        if settings.skillforge.base_url is None:
+    def _build_skillforge_client(self) -> SkillforgeClient:
+        if self.settings.skillforge.base_url is None:
             log.warning("SKILLFORGE__BASE_URL is not configured; API-backed commands will fail.")
             return SkillforgeClientNotConfigured()
 
-        token = settings.skillforge.token.get_secret_value() if settings.skillforge.token is not None else None
+        token = (
+            self.settings.skillforge.token.get_secret_value() if self.settings.skillforge.token is not None else None
+        )
         return HttpSkillforgeClient(
-            base_url=settings.skillforge.base_url,
+            base_url=self.settings.skillforge.base_url,
             token=token,
-            timeout_seconds=settings.skillforge.timeout_seconds,
+            timeout_seconds=self.settings.skillforge.timeout_seconds,
         )
