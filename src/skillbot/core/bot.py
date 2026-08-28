@@ -9,7 +9,7 @@ from skillcore.logging import get_logger
 from .app_command_logger import AppCommandLogger, AppCommandLogPolicy
 from .config import Settings
 from .permissions import CommandEnvironmentService, PermissionDenied, PermissionService
-from .skillforge import HttpSkillforgeClient, SkillforgeClient, SkillforgeClientNotConfigured
+from .skillforge import SkillForgeClient
 
 log = get_logger(__name__)
 
@@ -20,7 +20,7 @@ class SkillBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
         self.settings = settings
-        self.skillforge = self._build_skillforge_client()
+        self.skillforge = SkillForgeClient(settings=settings.skillforge)
         self.permission_service = PermissionService(self.skillforge)
         self.command_env_service = CommandEnvironmentService(self.skillforge)
 
@@ -36,8 +36,10 @@ class SkillBot(commands.Bot):
         await self._sync_app_commands()
 
     async def close(self) -> None:
-        await super().close()
-        await self.skillforge.close()
+        try:
+            await super().close()
+        finally:
+            await self.skillforge.close()
 
     async def on_ready(self) -> None:
         log.info("Logged in as %s", self.user)
@@ -131,17 +133,3 @@ class SkillBot(commands.Bot):
                 log.debug("Synced %d global commands", len(synced))
         except Exception:
             log.exception("Syncing app commands failed (continuing without sync)")
-
-    def _build_skillforge_client(self) -> SkillforgeClient:
-        if self.settings.skillforge.base_url is None:
-            log.warning("SKILLFORGE__BASE_URL is not configured; API-backed commands will fail.")
-            return SkillforgeClientNotConfigured()
-
-        token = (
-            self.settings.skillforge.token.get_secret_value() if self.settings.skillforge.token is not None else None
-        )
-        return HttpSkillforgeClient(
-            base_url=self.settings.skillforge.base_url,
-            token=token,
-            timeout_seconds=self.settings.skillforge.timeout_seconds,
-        )

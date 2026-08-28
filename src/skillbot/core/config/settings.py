@@ -3,7 +3,7 @@ from functools import lru_cache
 from pydantic import BaseModel, SecretStr
 from pydantic_settings import SettingsConfigDict
 from skillcore.config import CoreSettings
-from skillcore.logging import LoggingSettings
+from skillcore.logging import LoggingSettings as CoreLoggingSettings
 
 
 class DiscordSettings(CoreSettings):
@@ -31,9 +31,14 @@ class DiscordSettings(CoreSettings):
     )
 
 
-class SkillforgeSettings(CoreSettings):
-    base_url: str | None = None
-    token: SecretStr | None = None
+class LoggingSettings(CoreLoggingSettings):
+    app_name: str = "skillbot"
+
+
+class SkillForgeSettings(CoreSettings):
+    base_url: str
+    client_id: str
+    client_token: SecretStr
     timeout_seconds: float = 10.0
 
     model_config = SettingsConfigDict(
@@ -53,7 +58,7 @@ class Settings(BaseModel):
 
     discord: DiscordSettings
     logging: LoggingSettings
-    skillforge: SkillforgeSettings
+    skillforge: SkillForgeSettings
 
 
 @lru_cache(maxsize=1)
@@ -61,5 +66,5 @@ def get_settings() -> Settings:
     return Settings(
         discord=DiscordSettings.from_env(),
         logging=LoggingSettings.from_env(),
-        skillforge=SkillforgeSettings.from_env(),
+        skillforge=SkillForgeSettings.from_env(),
     )

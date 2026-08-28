@@ -11,7 +11,7 @@ from skillbot.core.models import (
     PermissionSubject,
     PermissionSubjectType,
 )
-from skillbot.core.skillforge import SkillforgeClient, SkillforgeClientNotConfigured
+from skillbot.core.skillforge import SkillForgeClient
 
 # region Config
 
@@ -69,13 +69,13 @@ class _MatchedGrant:
 class PermissionService:
     def __init__(
         self,
-        client: SkillforgeClient | None = None,
+        client: SkillForgeClient,
         *,
         db: object | None = None,
         role_resolver: DiscordRoleResolver | None = None,
     ) -> None:
         del db  # compatibility only; permissions no longer use the DB directly.
-        self._client = client or SkillforgeClientNotConfigured()
+        self._client = client
         self._role_resolver = role_resolver or DiscordRoleResolver()
 
     async def authorize(
@@ -85,21 +85,22 @@ class PermissionService:
         *,
         context: dict | None = None,
     ) -> PermissionDecision:
-        del context  # reserved for future resource-scoped checks.
-        action_key = self._normalize_action(action)
+        # del context  # reserved for future resource-scoped checks.
+        # action_key = self._normalize_action(action)
 
-        principal = await self._resolve_principal(interaction)
-        if principal is None:
-            return PermissionDecision(
-                allowed=False,
-                action=action_key,
-                reason="Interaction user is missing.",
-                source="default_deny",
-                matched_subject=None,
-            )
+        # principal = await self._resolve_principal(interaction)
+        # if principal is None:
+        #     return PermissionDecision(
+        #         allowed=False,
+        #         action=action_key,
+        #         reason="Interaction user is missing.",
+        #         source="default_deny",
+        #         matched_subject=None,
+        #     )
 
-        grants = await self._client.list_permission_grants(principal.subjects)
-        return self._evaluate_grants(action_key, grants)
+        # grants = await self._client.list_permission_grants(principal.subjects)
+        # return self._evaluate_grants(action_key, grants)
+        ...
 
     async def can(
         self,
@@ -129,25 +130,26 @@ class PermissionService:
         return str(action).strip()
 
     async def _resolve_principal(self, interaction: discord.Interaction) -> _PrincipalContext | None:
-        user = interaction.user
-        if user is None:
-            return None
+        # user = interaction.user
+        # if user is None:
+        #     return None
 
-        discord_user_id = getattr(user, "id", None)
-        if discord_user_id is None:
-            return None
+        # discord_user_id = getattr(user, "id", None)
+        # if discord_user_id is None:
+        #     return None
 
-        principal = await self._client.get_permission_principal(discord_user_id)
-        role_subject_key = principal.role_key if principal is not None else None
-        if role_subject_key is None:
-            role_subject_key = self._fallback_role_from_discord(user)
+        # principal = await self._client.get_permission_principal(discord_user_id)
+        # role_subject_key = principal.role_key if principal is not None else None
+        # if role_subject_key is None:
+        #     role_subject_key = self._fallback_role_from_discord(user)
 
-        return _PrincipalContext(
-            discord_user_id=discord_user_id,
-            user_subject_key=str(discord_user_id),
-            group_subject_keys=principal.group_keys if principal is not None else (),
-            role_subject_key=role_subject_key,
-        )
+        # return _PrincipalContext(
+        #     discord_user_id=discord_user_id,
+        #     user_subject_key=str(discord_user_id),
+        #     group_subject_keys=principal.group_keys if principal is not None else (),
+        #     role_subject_key=role_subject_key,
+        # )
+        ...
 
     def _fallback_role_from_discord(self, user: discord.abc.User) -> str | None:
         if not isinstance(user, discord.Member):
