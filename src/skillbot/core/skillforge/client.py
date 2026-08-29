@@ -4,12 +4,13 @@ import httpx
 from skillforge_client import AuthenticatedClient, Client
 from skillforge_client.api.bot import upsert_discord_user_endpoint_api_v1_bot_users_discord_id_put
 from skillforge_client.api.system import liveness_check_health_live_get
-from skillforge_client.models import DiscordUserResponse, DiscordUserUpsertRequest, HealthCheckResponse
+from skillforge_client.models import DiscordUserUpsertRequest, HealthCheckResponse
 
 from skillbot.core.config import SkillForgeSettings
 
 from .auth import ClientCredentialsAuth
 from .helpers import require_response, skillforge_boundary
+from .models import DiscordUser, MemberRole
 
 
 @skillforge_boundary
@@ -53,8 +54,17 @@ class SkillForgeClient:
     async def upsert_discord_user(
         self,
         discord_id: int,
-        request: DiscordUserUpsertRequest,
-    ) -> DiscordUserResponse:
+        *,
+        nick_name: str,
+        role: MemberRole,
+        active: bool = True,
+    ) -> DiscordUser:
+        request = DiscordUserUpsertRequest(
+            nick_name=nick_name,
+            role=role,
+            active=active,
+        )
+
         response = await upsert_discord_user_endpoint_api_v1_bot_users_discord_id_put.asyncio_detailed(
             discord_id=discord_id,
             client=self._client,
@@ -64,5 +74,5 @@ class SkillForgeClient:
         return require_response(
             response,
             status=HTTPStatus.OK,
-            model=DiscordUserResponse,
+            model=DiscordUser,
         )
