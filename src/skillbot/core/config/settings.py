@@ -38,7 +38,7 @@ class LoggingSettings(CoreLoggingSettings):
 class SkillForgeSettings(CoreSettings):
     base_url: str
     client_id: str
-    client_token: SecretStr
+    client_secret: SecretStr
     timeout_seconds: float = 10.0
 
     model_config = SettingsConfigDict(
