@@ -4,13 +4,12 @@ import httpx
 from skillforge_client import AuthenticatedClient, Client
 from skillforge_client.api.bot import upsert_discord_user_endpoint_api_v1_bot_users_discord_id_put
 from skillforge_client.api.system import liveness_check_health_live_get
-from skillforge_client.models import DiscordUserUpsertRequest, HealthCheckResponse
+from skillforge_client.models import DiscordUserResponse, DiscordUserUpsertRequest, HealthCheckResponse
 
 from skillbot.core.config import SkillForgeSettings
 
 from .auth import ClientCredentialsAuth
-from .errors import SkillForgeClientAuthenticationError, SkillForgeResponseError
-from .helpers import skillforge_boundary
+from .helpers import require_response, skillforge_boundary
 
 
 @skillforge_boundary
@@ -51,17 +50,19 @@ class SkillForgeClient:
     async def liveness_check(self) -> HealthCheckResponse | None:
         return await liveness_check_health_live_get.asyncio(client=self._public_client)
 
-    async def upsert_discord_user(self, discord_id: int, request: DiscordUserUpsertRequest) -> None:
+    async def upsert_discord_user(
+        self,
+        discord_id: int,
+        request: DiscordUserUpsertRequest,
+    ) -> DiscordUserResponse:
         response = await upsert_discord_user_endpoint_api_v1_bot_users_discord_id_put.asyncio_detailed(
             discord_id=discord_id,
             client=self._client,
             body=request,
         )
 
-        if response.status_code == HTTPStatus.OK:
-            return
-
-        if response.status_code == HTTPStatus.UNAUTHORIZED:
-            raise SkillForgeClientAuthenticationError("SkillForge rejected the access token")
-
-        raise SkillForgeResponseError(f"Upserting the Discord user returned HTTP {response.status_code}")
+        return require_response(
+            response,
+            status=HTTPStatus.OK,
+            model=DiscordUserResponse,
+        )
