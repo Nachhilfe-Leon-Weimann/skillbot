@@ -7,7 +7,7 @@ from discord import app_commands
 from skillbot.core.discord_roles import DiscordRoleResolver
 from skillbot.core.models import ActivateTeacherRequest, CommandEnvKind, MemberRole
 from skillbot.core.permissions import CommandEnvironmentService
-from skillbot.core.skillforge import SkillforgeClient, SkillforgeClientNotConfigured
+from skillbot.core.skillforge import SkillForgeClient
 
 log = logging.getLogger(__name__)
 
@@ -32,10 +32,10 @@ class TeacherEnableResult:
 class TeacherEnableService:
     def __init__(
         self,
-        client: SkillforgeClient | None = None,
+        client: SkillForgeClient,
         command_env_service: CommandEnvironmentService | None = None,
     ):
-        self._client = client if client is not None else SkillforgeClientNotConfigured()
+        self._client = client
         self._role_resolver = DiscordRoleResolver()
         self._command_env_service = command_env_service
 
@@ -77,89 +77,91 @@ class TeacherEnableService:
         discord_name: str,
         real_name: str,
     ) -> TeacherEnableResult:
-        guild = interaction.guild
-        if guild is None:
-            raise TeacherEnableError("Dieser Command kann nur auf einem Server verwendet werden.")
-        if not isinstance(interaction.user, discord.Member):
-            raise TeacherEnableError("Actor konnte nicht als Server-Mitglied aufgelöst werden.")
-        if not self._role_resolver.member_has_role(interaction.user, MemberRole.admin):
-            raise TeacherEnableError("Nur Admins dürfen Lehrkräfte aktivieren.")
+        # guild = interaction.guild
+        # if guild is None:
+        #     raise TeacherEnableError("Dieser Command kann nur auf einem Server verwendet werden.")
+        # if not isinstance(interaction.user, discord.Member):
+        #     raise TeacherEnableError("Actor konnte nicht als Server-Mitglied aufgelöst werden.")
+        # if not self._role_resolver.member_has_role(interaction.user, MemberRole.admin):
+        #     raise TeacherEnableError("Nur Admins dürfen Lehrkräfte aktivieren.")
 
-        if self._command_env_service is not None:
-            decision = await self._command_env_service.authorize(
-                interaction,
-                kind=CommandEnvKind.admin_cmd,
-                owner_bound=False,
-            )
-            if not decision.allowed:
-                raise TeacherEnableError(str(decision.reason))
+        # if self._command_env_service is not None:
+        #     decision = await self._command_env_service.authorize(
+        #         interaction,
+        #         kind=CommandEnvKind.admin_cmd,
+        #         owner_bound=False,
+        #     )
+        #     if not decision.allowed:
+        #         raise TeacherEnableError(str(decision.reason))
 
-        teacher_role = self._role_resolver.resolve_guild_role(guild, MemberRole.teacher)
-        if teacher_role is None:
-            raise TeacherEnableError("Lehrer-Rolle `Lehrer` wurde nicht gefunden.")
+        # teacher_role = self._role_resolver.resolve_guild_role(guild, MemberRole.teacher)
+        # if teacher_role is None:
+        #     raise TeacherEnableError("Lehrer-Rolle `Lehrer` wurde nicht gefunden.")
 
-        target = discord.utils.get(guild.members, name=discord_name)
-        if target is None:
-            raise TeacherEnableError(f"Discord-Account `{discord_name}` wurde nicht gefunden.")
-        if target.bot:
-            raise TeacherEnableError("Bots können nicht als Lehrkräfte aktiviert werden.")
-        if self._role_resolver.member_has_role(target, MemberRole.student):
-            raise TeacherEnableError("Schüler können nicht als Lehrkräfte aktiviert werden.")
+        # target = discord.utils.get(guild.members, name=discord_name)
+        # if target is None:
+        #     raise TeacherEnableError(f"Discord-Account `{discord_name}` wurde nicht gefunden.")
+        # if target.bot:
+        #     raise TeacherEnableError("Bots können nicht als Lehrkräfte aktiviert werden.")
+        # if self._role_resolver.member_has_role(target, MemberRole.student):
+        #     raise TeacherEnableError("Schüler können nicht als Lehrkräfte aktiviert werden.")
 
-        alias = self._teacher_alias(real_name)
-        previous_nick = target.nick
-        had_teacher_role = self._role_resolver.member_has_role(target, MemberRole.teacher)
-        category_created = False
-        channel_created = False
-        role_added = False
-        nick_changed = False
-        category: discord.CategoryChannel | None = None
-        cmd_channel: discord.TextChannel | None = None
+        # alias = self._teacher_alias(real_name)
+        # previous_nick = target.nick
+        # had_teacher_role = self._role_resolver.member_has_role(target, MemberRole.teacher)
+        # category_created = False
+        # channel_created = False
+        # role_added = False
+        # nick_changed = False
+        # category: discord.CategoryChannel | None = None
+        # cmd_channel: discord.TextChannel | None = None
 
-        try:
-            await target.add_roles(teacher_role, reason=f"Activated via /teachers enable by {interaction.user.id}")
-            role_added = not had_teacher_role
-            await target.edit(nick=alias, reason=f"Teacher alias set by {interaction.user.id}")
-            nick_changed = previous_nick != alias
+        # try:
+        #     await target.add_roles(teacher_role, reason=f"Activated via /teachers enable by {interaction.user.id}")
+        #     role_added = not had_teacher_role
+        #     await target.edit(nick=alias, reason=f"Teacher alias set by {interaction.user.id}")
+        #     nick_changed = previous_nick != alias
 
-            category, category_created = await self._ensure_teacher_category(guild, target, real_name)
-            cmd_channel, channel_created = await self._ensure_teacher_cmd_channel(category)
+        #     category, category_created = await self._ensure_teacher_category(guild, target, real_name)
+        #     cmd_channel, channel_created = await self._ensure_teacher_cmd_channel(category)
 
-            teacher = await self._client.activate_teacher(
-                ActivateTeacherRequest(
-                    discord_id=target.id,
-                    full_name=real_name.strip(),
-                    teaching_category_id=category.id,
-                    command_channel_id=cmd_channel.id,
-                )
-            )
-        except Exception as exc:
-            log.exception("teachers.enable failed", exc_info=exc)
-            await self._compensate(
-                target=target,
-                teacher_role=teacher_role,
-                role_added=role_added,
-                previous_nick=previous_nick,
-                nick_changed=nick_changed,
-                category=category,
-                category_created=category_created,
-                cmd_channel=cmd_channel,
-                channel_created=channel_created,
-            )
-            raise TeacherEnableError("Lehrer-Aktivierung fehlgeschlagen und wurde zurückgerollt.") from exc
+        #     teacher = await self._client.activate_teacher(
+        #         ActivateTeacherRequest(
+        #             discord_id=target.id,
+        #             full_name=real_name.strip(),
+        #             teaching_category_id=category.id,
+        #             command_channel_id=cmd_channel.id,
+        #         )
+        #     )
+        # except Exception as exc:
+        #     log.exception("teachers.enable failed", exc_info=exc)
+        #     await self._compensate(
+        #         target=target,
+        #         teacher_role=teacher_role,
+        #         role_added=role_added,
+        #         previous_nick=previous_nick,
+        #         nick_changed=nick_changed,
+        #         category=category,
+        #         category_created=category_created,
+        #         cmd_channel=cmd_channel,
+        #         channel_created=channel_created,
+        #     )
+        #     raise TeacherEnableError("Lehrer-Aktivierung fehlgeschlagen und wurde zurückgerollt.") from exc
 
-        return TeacherEnableResult(
-            target_discord_id=target.id,
-            target_discord_name=target.name,
-            teacher_user_id=teacher.user_id,
-            category_id=category.id,
-            cmd_channel_id=cmd_channel.id,
-        )
+        # return TeacherEnableResult(
+        #     target_discord_id=target.id,
+        #     target_discord_name=target.name,
+        #     teacher_user_id=teacher.user_id,
+        #     category_id=category.id,
+        #     cmd_channel_id=cmd_channel.id,
+        # )
+        ...
 
     async def _teacher_and_student_discord_ids(self) -> tuple[set[int], set[int]]:
-        teacher_ids = await self._client.list_teacher_discord_ids()
-        student_ids = await self._client.list_student_discord_ids()
-        return teacher_ids, student_ids
+        # teacher_ids = await self._client.list_teacher_discord_ids()
+        # student_ids = await self._client.list_student_discord_ids()
+        # return teacher_ids, student_ids
+        ...
 
     async def _ensure_teacher_category(
         self,

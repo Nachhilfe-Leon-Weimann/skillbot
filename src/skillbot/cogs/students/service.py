@@ -7,7 +7,7 @@ from discord import app_commands
 
 from skillbot.core.discord_roles import DiscordRoleResolver
 from skillbot.core.models import ActivateStudentRequest, MemberRole
-from skillbot.core.skillforge import SkillforgeClient, SkillforgeClientNotConfigured
+from skillbot.core.skillforge import SkillForgeClient
 
 log = logging.getLogger(__name__)
 
@@ -62,8 +62,8 @@ class CustomerResolver:
 
 
 class StudentEnableService:
-    def __init__(self, client: SkillforgeClient | None = None):
-        self._client = client if client is not None else SkillforgeClientNotConfigured()
+    def __init__(self, client: SkillForgeClient):
+        self._client = client
         self._role_resolver = DiscordRoleResolver()
 
     async def autocomplete_discord_name(
@@ -101,66 +101,68 @@ class StudentEnableService:
         real_name: str,
         customer_id: int,
     ) -> StudentEnableResult:
-        guild = interaction.guild
-        if guild is None:
-            raise StudentEnableError("Dieser Command kann nur auf einem Server verwendet werden.")
-        if not isinstance(interaction.user, discord.Member):
-            raise StudentEnableError("Der ausführende Nutzer konnte nicht als Server-Mitglied aufgelöst werden.")
+        # guild = interaction.guild
+        # if guild is None:
+        #     raise StudentEnableError("Dieser Command kann nur auf einem Server verwendet werden.")
+        # if not isinstance(interaction.user, discord.Member):
+        #     raise StudentEnableError("Der ausführende Nutzer konnte nicht als Server-Mitglied aufgelöst werden.")
 
-        student_role = self._role_resolver.resolve_guild_role(guild, MemberRole.student)
-        if student_role is None:
-            raise StudentEnableError("Die Schüler-Rolle `Schüler` wurde nicht gefunden.")
+        # student_role = self._role_resolver.resolve_guild_role(guild, MemberRole.student)
+        # if student_role is None:
+        #     raise StudentEnableError("Die Schüler-Rolle `Schüler` wurde nicht gefunden.")
 
-        target = discord.utils.get(guild.members, name=discord_name)
-        if target is None:
-            raise StudentEnableError(f"Discord-Account `{discord_name}` wurde nicht gefunden.")
-        if target.bot:
-            raise StudentEnableError("Bots können nicht als Schüler aktiviert werden.")
+        # target = discord.utils.get(guild.members, name=discord_name)
+        # if target is None:
+        #     raise StudentEnableError(f"Discord-Account `{discord_name}` wurde nicht gefunden.")
+        # if target.bot:
+        #     raise StudentEnableError("Bots können nicht als Schüler aktiviert werden.")
 
-        alias = self._student_alias(real_name)
-        previous_nick = target.nick
-        had_student_role = self._role_resolver.member_has_role(target, MemberRole.student)
-        role_added = False
-        nick_changed = False
+        # alias = self._student_alias(real_name)
+        # previous_nick = target.nick
+        # had_student_role = self._role_resolver.member_has_role(target, MemberRole.student)
+        # role_added = False
+        # nick_changed = False
 
-        try:
-            await target.add_roles(student_role, reason=f"Activated via /students enable by {interaction.user.id}")
-            role_added = not had_student_role
-            await target.edit(nick=alias, reason=f"Student alias set by {interaction.user.id}")
-            nick_changed = previous_nick != alias
+        # try:
+        #     await target.add_roles(student_role, reason=f"Activated via /students enable by {interaction.user.id}")
+        #     role_added = not had_student_role
+        #     await target.edit(nick=alias, reason=f"Student alias set by {interaction.user.id}")
+        #     nick_changed = previous_nick != alias
 
-            student = await self._client.activate_student(
-                ActivateStudentRequest(
-                    teacher_discord_id=interaction.user.id,
-                    student_discord_id=target.id,
-                    full_name=real_name.strip(),
-                    customer_id=customer_id,
-                )
-            )
-        except Exception as exc:
-            log.exception("students.enable failed", exc_info=exc)
-            if role_added:
-                try:
-                    await target.remove_roles(student_role, reason="Rollback after failed students.enable")
-                except Exception as rollback_exc:  # pragma: no cover
-                    log.exception("Rollback failed for student role", exc_info=rollback_exc)
-            if nick_changed:
-                try:
-                    await target.edit(nick=previous_nick, reason="Rollback after failed students.enable")
-                except Exception as rollback_exc:  # pragma: no cover
-                    log.exception("Rollback failed for student nickname", exc_info=rollback_exc)
-            raise StudentEnableError("Freischaltung fehlgeschlagen und wurde zurückgerollt.") from exc
+        #     student = await self._client.activate_student(
+        #         ActivateStudentRequest(
+        #             teacher_discord_id=interaction.user.id,
+        #             student_discord_id=target.id,
+        #             full_name=real_name.strip(),
+        #             customer_id=customer_id,
+        #         )
+        #     )
+        # except Exception as exc:
+        #     log.exception("students.enable failed", exc_info=exc)
+        #     if role_added:
+        #         try:
+        #             await target.remove_roles(student_role, reason="Rollback after failed students.enable")
+        #         except Exception as rollback_exc:  # pragma: no cover
+        #             log.exception("Rollback failed for student role", exc_info=rollback_exc)
+        #     if nick_changed:
+        #         try:
+        #             await target.edit(nick=previous_nick, reason="Rollback after failed students.enable")
+        #         except Exception as rollback_exc:  # pragma: no cover
+        #             log.exception("Rollback failed for student nickname", exc_info=rollback_exc)
+        #     raise StudentEnableError("Freischaltung fehlgeschlagen und wurde zurückgerollt.") from exc
 
-        return StudentEnableResult(
-            target_discord_id=target.id,
-            target_discord_name=target.name,
-            student_user_id=student.user_id,
-            party_id=student.party_id,
-            alias=alias,
-        )
+        # return StudentEnableResult(
+        #     target_discord_id=target.id,
+        #     target_discord_name=target.name,
+        #     student_user_id=student.user_id,
+        #     party_id=student.party_id,
+        #     alias=alias,
+        # )
+        ...
 
     async def _active_student_discord_ids(self) -> set[int]:
-        return await self._client.list_student_discord_ids()
+        # return await self._client.list_student_discord_ids()
+        ...
 
     def _student_alias(self, real_name: str) -> str:
         normalized = real_name.strip()
