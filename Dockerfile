@@ -1,38 +1,48 @@
-# syntax=docker/dockerfile:1
-ARG PYTHON_VERSION=3.13-slim
+# syntax=docker/dockerfile:1.7
 
-# --- builder: installs deps deterministically via uv.lock ---
-FROM python:${PYTHON_VERSION} AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
+
+ENV GIT_TERMINAL_PROMPT=0 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
 WORKDIR /app
 
-# Install uv (build-time only)
-RUN pip install --no-cache-dir uv
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency metadata first (better layer caching)
-COPY pyproject.toml README.md ./
-COPY uv.lock.prod uv.lock
+COPY pyproject.toml uv.lock README.md ./
 
-# Vendored private deps (checked out in CI)
-COPY vendor/skillcore ./vendor/skillcore
+# skillcore is a private git dependency: the token is only there while this layer builds. --locked fails the
+# build on a stale uv.lock instead of producing an image that cannot start.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=secret,id=github_token,required=true \
+    set -eu; \
+    github_token="$(cat /run/secrets/github_token)"; \
+    git config --global url."https://x-access-token:${github_token}@github.com/".insteadOf "https://github.com/"; \
+    uv sync --locked --no-dev --no-install-project; \
+    git config --global --unset-all url."https://x-access-token:${github_token}@github.com/".insteadOf
 
-# App source
 COPY src ./src
 
-# Create venv at /app/.venv and install prod deps strictly from uv.lock
-RUN uv sync --no-dev --frozen
+FROM python:3.13-slim-bookworm AS runtime
 
-# --- runtime: minimal image, no uv needed ---
-FROM python:${PYTHON_VERSION} AS runtime
+ENV PATH="/app/.venv/bin:${PATH}" \
+    PYTHONPATH="/app/src" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Copy the virtual environment and app code
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/src /app/src
+RUN useradd --create-home --shell /usr/sbin/nologin skillbot
 
-# Use the venv by default
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH="/app/src"
+COPY --from=builder --chown=skillbot:skillbot /app/.venv ./.venv
+COPY --from=builder --chown=skillbot:skillbot /app/src ./src
 
-# Start bot
+RUN mkdir -p /app/logs && chown -R skillbot:skillbot /app
+
+USER skillbot
+
 CMD ["python", "-m", "skillbot"]

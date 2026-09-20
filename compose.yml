@@ -1,0 +1,9 @@
+# The image tag is the deployed version: release-please rewrites the annotated `image:` line in the release
+# commit, so `main` records what prod runs. Change the tag by hand only to roll back (README, "Rolling back").
+services:
+  bot:
+    image: ghcr.io/nachhilfe-leon-weimann/skillbot:v0.1.0 # x-release-please-version
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env
