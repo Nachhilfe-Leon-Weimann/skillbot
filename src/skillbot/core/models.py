@@ -101,4 +101,3 @@ class ActivateStudentRequest:
     student_discord_id: int
     full_name: str
     customer_id: int
-

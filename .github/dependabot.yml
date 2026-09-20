@@ -1,0 +1,34 @@
+version: 2
+
+registries:
+  github-private-repos:
+    type: git
+    url: https://github.com
+    username: x-access-token
+    password: ${{secrets.SKILLPLATFORM_READ_TOKEN}}
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "uv"
+    directory: "/"
+    registries:
+      - github-private-repos
+    schedule:
+      interval: "weekly"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"

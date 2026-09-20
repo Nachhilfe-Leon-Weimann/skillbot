@@ -5,7 +5,7 @@ description = "A Discord bot for tutoring management and automation."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "skillcore @ file:///${PROJECT_ROOT}/vendor/skillcore",
+    "skillcore>=0.2.0",
     "discord-py>=2.6.4",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
@@ -19,9 +19,8 @@ dev = ["pytest>=9.0.2", "ruff>=0.14.10"]
 requires      = ["uv_build>=0.9.21,<0.10.0"]
 build-backend = "uv_build"
 
-# Local editable paths for development convenience.
 [tool.uv.sources]
-skillcore = { path = "../skillcore", editable = true }
+skillcore = { git = "https://github.com/Nachhilfe-Leon-Weimann/skillcore.git", tag = "v0.2.0" }
 
 [tool.ruff]
 target-version = "py313"
