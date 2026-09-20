@@ -6,7 +6,6 @@ import discord
 from discord import app_commands
 
 from skillbot.core.discord_roles import DiscordRoleResolver
-from skillbot.core.models import ActivateStudentRequest, MemberRole
 from skillbot.core.skillforge import SkillForgeClient
 
 log = logging.getLogger(__name__)

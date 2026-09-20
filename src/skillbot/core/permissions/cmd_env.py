@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import discord
 
 from skillbot.core.discord_roles import DiscordRoleResolver
-from skillbot.core.models import CommandEnvChannel, CommandEnvKind, MemberRole
+from skillbot.core.models import CommandEnvChannel, CommandEnvKind
 from skillbot.core.skillforge import SkillForgeClient
 
 

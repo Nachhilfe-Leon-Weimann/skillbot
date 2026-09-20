@@ -5,7 +5,7 @@ import discord
 from discord import app_commands
 
 from skillbot.core.discord_roles import DiscordRoleResolver
-from skillbot.core.models import ActivateTeacherRequest, CommandEnvKind, MemberRole
+from skillbot.core.models import MemberRole
 from skillbot.core.permissions import CommandEnvironmentService
 from skillbot.core.skillforge import SkillForgeClient
 

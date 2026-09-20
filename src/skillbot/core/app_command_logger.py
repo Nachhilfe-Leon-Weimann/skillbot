@@ -79,10 +79,14 @@ class AppCommandLogger:
 
     async def log_error(self, interaction: discord.Interaction, command, error: Exception) -> None:
         name = self._qualified_name(command) if command else "unknown"
-        fields = self._base_fields(interaction, name) | {
-            "error_type": type(error).__name__,
-            "error": str(error),
-        } | self._permission_fields(interaction, error)
+        fields = (
+            self._base_fields(interaction, name)
+            | {
+                "error_type": type(error).__name__,
+                "error": str(error),
+            }
+            | self._permission_fields(interaction, error)
+        )
 
         is_perm = isinstance(
             error,
