@@ -26,8 +26,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Vendor directories
-vendor
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -94,12 +92,7 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
-#
-#   We exclude the uv.lock file, since it represents the development environment of the skillbot,
-#   which is not relevant for version control.
-#   
-#   The relevant lock is generated via just lock and named uv.lock.prod for production deployments.
-uv.lock
+# uv.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
