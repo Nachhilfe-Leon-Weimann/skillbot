@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Maintain release PR or create release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+      sha: ${{ steps.rp.outputs.sha }}
+
+    steps:
+      # The App authors the release PR so that CI runs on it; PRs opened with GITHUB_TOKEN get no CI run.
+      - name: Create release App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      # Keep this the last step: a failure after the release exists would skip build and deploy.
+      - name: Run release-please
+        id: rp
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+  image:
+    name: Build and publish container image
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      push: true
+      source_ref: ${{ needs.release-please.outputs.sha }}
+      version: ${{ needs.release-please.outputs.version }}
+      tag_latest: true
+      platforms: "linux/amd64"
+    secrets:
+      SKILLPLATFORM_READ_TOKEN: ${{ secrets.SKILLPLATFORM_READ_TOKEN }}
+    permissions:
+      contents: read
+      packages: write
+
+  deploy:
+    name: Deploy
+    needs:
+      - release-please
+      - image
+    uses: ./.github/workflows/deploy.yml
+    with:
+      version: ${{ needs.release-please.outputs.version }}
+      sha: ${{ needs.release-please.outputs.sha }}
+    secrets: inherit

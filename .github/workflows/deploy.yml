@@ -1,0 +1,43 @@
+name: Deploy
+run-name: Deploy v${{ inputs.version }} to production
+
+# The repo's entry point for a deploy: release.yml calls it after a release, and it can be dispatched by hand
+# for the current release. The deploy itself is the platform's shared workflow (skill-platform-workflows); what
+# it needs from this repo is configuration: the `production` environment and the org variable DOKPLOY_BASE_URL.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      sha:
+        required: false
+        default: ""
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Released version that must be running afterwards, without leading v"
+        required: true
+        type: string
+      dry_run:
+        description: "Only verify Dokploy API access, deploy nothing"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# No concurrency group here: the shared job holds `deploy-production`, and a caller declaring it too would wait
+# for itself.
+jobs:
+  deploy:
+    name: Deploy
+    uses: Nachhilfe-Leon-Weimann/skill-platform-workflows/.github/workflows/deploy.yml@v1
+    with:
+      version: ${{ inputs.version }}
+      sha: ${{ inputs.sha || github.sha }}
+      dry_run: ${{ inputs.dry_run || false }}
+    secrets: inherit
