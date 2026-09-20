@@ -8,7 +8,10 @@ lint:
 format-check:
     uv run ruff format --check
 
-static-checks: lint format-check
+typecheck:
+    uv run ty check
+
+static-checks: lint format-check typecheck
 
 # Everything that must be green before a push; CI's `check` job runs the same.
 check: static-checks test

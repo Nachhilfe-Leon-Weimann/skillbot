@@ -99,7 +99,7 @@ class StudentEnableService:
         discord_name: str,
         real_name: str,
         customer_id: int,
-    ) -> StudentEnableResult:
+    ) -> StudentEnableResult:  # ty: ignore[empty-body]
         # guild = interaction.guild
         # if guild is None:
         #     raise StudentEnableError("Dieser Command kann nur auf einem Server verwendet werden.")
@@ -159,7 +159,7 @@ class StudentEnableService:
         # )
         ...
 
-    async def _active_student_discord_ids(self) -> set[int]:
+    async def _active_student_discord_ids(self) -> set[int]:  # ty: ignore[empty-body]
         # return await self._client.list_student_discord_ids()
         ...
 

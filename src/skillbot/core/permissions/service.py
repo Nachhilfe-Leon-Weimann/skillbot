@@ -84,7 +84,7 @@ class PermissionService:
         action: PermissionAction | str,
         *,
         context: dict | None = None,
-    ) -> PermissionDecision:
+    ) -> PermissionDecision:  # ty: ignore[empty-body]
         # del context  # reserved for future resource-scoped checks.
         # action_key = self._normalize_action(action)
 

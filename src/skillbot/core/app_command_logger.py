@@ -52,8 +52,8 @@ class AppCommandLogger:
 
         if error is not None:
             decision = getattr(error, "decision", None)
-            if decision is None and getattr(error, "original", None) is not None:
-                decision = getattr(error.original, "decision", None)
+            if decision is None:
+                decision = getattr(getattr(error, "original", None), "decision", None)
 
         if decision is None:
             decision = getattr(interaction, "extras", {}).get("permission_decision")
