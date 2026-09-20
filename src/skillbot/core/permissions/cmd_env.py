@@ -34,7 +34,7 @@ class CommandEnvironmentService:
         *,
         kind: CommandEnvKind | str,
         owner_bound: bool = False,
-    ) -> CmdEnvDecision:
+    ) -> CmdEnvDecision:  # ty: ignore[empty-body]
         # kind_enum = self._parse_kind(kind)
         # if kind_enum is None:
         #     return CmdEnvDecision(False, str(kind), "Unknown command environment kind.")

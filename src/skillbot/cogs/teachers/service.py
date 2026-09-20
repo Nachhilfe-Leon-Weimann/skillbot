@@ -76,7 +76,7 @@ class TeacherEnableService:
         *,
         discord_name: str,
         real_name: str,
-    ) -> TeacherEnableResult:
+    ) -> TeacherEnableResult:  # ty: ignore[empty-body]
         # guild = interaction.guild
         # if guild is None:
         #     raise TeacherEnableError("Dieser Command kann nur auf einem Server verwendet werden.")
@@ -157,7 +157,7 @@ class TeacherEnableService:
         # )
         ...
 
-    async def _teacher_and_student_discord_ids(self) -> tuple[set[int], set[int]]:
+    async def _teacher_and_student_discord_ids(self) -> tuple[set[int], set[int]]:  # ty: ignore[empty-body]
         # teacher_ids = await self._client.list_teacher_discord_ids()
         # student_ids = await self._client.list_student_discord_ids()
         # return teacher_ids, student_ids
@@ -178,7 +178,7 @@ class TeacherEnableService:
         overwrites = self._category_overwrites(guild, target)
         category = await guild.create_category(
             name=category_name,
-            overwrites=overwrites,  # type: ignore[arg-type]
+            overwrites=overwrites,
             reason=f"Teacher category for {real_name}",
         )
         return category, True
@@ -232,8 +232,8 @@ class TeacherEnableService:
         self,
         guild: discord.Guild,
         target: discord.Member,
-    ) -> dict[discord.abc.Snowflake, discord.PermissionOverwrite]:
-        overwrites: dict[discord.abc.Snowflake, discord.PermissionOverwrite] = {
+    ) -> dict[discord.Role | discord.Member | discord.Object, discord.PermissionOverwrite]:
+        overwrites: dict[discord.Role | discord.Member | discord.Object, discord.PermissionOverwrite] = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             target: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
         }

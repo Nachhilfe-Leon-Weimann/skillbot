@@ -50,11 +50,13 @@ class SkillBot(commands.Bot):
     async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError) -> None:
         await self.app_cmd_logger.log_error(interaction, getattr(interaction, "command", None), error)
 
+        # CommandInvokeError and friends wrap the actual exception in `original`.
+        original = getattr(error, "original", None)
         denied_error: PermissionDenied | None = None
         if isinstance(error, PermissionDenied):
             denied_error = error
-        elif isinstance(getattr(error, "original", None), PermissionDenied):
-            denied_error = error.original  # type: ignore[assignment]
+        elif isinstance(original, PermissionDenied):
+            denied_error = original
 
         if denied_error:
             message = str(denied_error)

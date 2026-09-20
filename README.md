@@ -12,7 +12,7 @@ Needs `uv`, `just` and a `.env` (see [`.env.example`](.env.example)).
 | `just dev` | run the bot |
 | `just dev-synced` | run it and sync the slash commands |
 | `just dev-local-core` | run it against the local `../skillcore` checkout |
-| `just check` | lint, format check and tests - keep green before every push |
+| `just check` | lint, format check, typecheck and tests - keep green before every push |
 
 Everything else is in the [`justfile`](justfile).
 
